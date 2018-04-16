@@ -22,7 +22,7 @@ import java.util.Set;
 
 public class AdhellAppIntegrity {
     public static final String ADHELL_STANDARD_PACKAGE = "https://bit.ly/2HfsqkV";
-    public static final int BLOCK_URL_LIMIT = 15000;
+    public static final int BLOCK_URL_LIMIT = 100000;
     public final static String DEFAULT_POLICY_ID = "default-policy";
 
     private static final String TAG = AdhellAppIntegrity.class.getCanonicalName();
