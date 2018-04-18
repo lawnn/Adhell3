@@ -12,7 +12,7 @@ android {
     compileSdkVersion 26
 
     defaultConfig {
-        applicationId "com."
+        applicationId "com.lawnn00.shtk"
         minSdkVersion 16
         targetSdkVersion 26
         versionCode 1
