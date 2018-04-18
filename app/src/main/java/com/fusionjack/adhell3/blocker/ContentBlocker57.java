@@ -2,10 +2,15 @@ package com.fusionjack.adhell3.blocker;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
+import android.os.Handler;
 import android.util.Log;
 import android.util.Patterns;
 
 import com.fusionjack.adhell3.App;
+import com.fusionjack.adhell3.db.entity.AppInfo;
+import com.fusionjack.adhell3.utils.AdhellFactory;
+import com.fusionjack.adhell3.utils.LogUtils;
 import com.sec.enterprise.AppIdentity;
 import com.sec.enterprise.firewall.DomainFilterRule;
 import com.sec.enterprise.firewall.Firewall;
@@ -18,6 +23,7 @@ public class ContentBlocker57 implements ContentBlocker {
     private static ContentBlocker57 mInstance = null;
 
     private ContentBlocker56 contentBlocker56;
+    private Handler handler;
 
     private ContentBlocker57() {
         contentBlocker56 = ContentBlocker56.getInstance();
@@ -67,38 +73,38 @@ public class ContentBlocker57 implements ContentBlocker {
     }
 
     @Override
-    public void processCustomRules() throws Exception {
-        contentBlocker56.processCustomRules();
+    public void setHandler(Handler handler) {
+        this.handler = handler;
+        contentBlocker56.setHandler(handler);
     }
 
-    @Override
-    public void processMobileRestrictedApps() throws Exception {
-        contentBlocker56.processMobileRestrictedApps();
-    }
+    private void setDns(String dns1, String dns2) {
+        LogUtils.getInstance().writeInfo("\nProcessing DNS...", handler);
 
-    @Override
-    public void processWhitelistedApps() throws Exception {
-        contentBlocker56.processWhitelistedApps();
-    }
-
-    @Override
-    public void processWhitelistedDomains() throws Exception {
-        contentBlocker56.processWhitelistedDomains();
-    }
-
-    @Override
-    public void processBlockedDomains() throws Exception {
-        contentBlocker56.processBlockedDomains();
-    }
-
-    public void setDns(String dns1, String dns2) {
-        DomainFilterRule domainFilterRule = new DomainFilterRule(new AppIdentity(Firewall.FIREWALL_ALL_PACKAGES, null));
-        domainFilterRule.setDns1(dns1);
-        domainFilterRule.setDns2(dns2);
         List<DomainFilterRule> rules = new ArrayList<>();
-        rules.add(domainFilterRule);
-        contentBlocker56.mFirewall.addDomainFilterRules(rules);
-        Log.d(TAG, "DNS1: " + domainFilterRule.getDns1());
-        Log.d(TAG, "DNS2: " + domainFilterRule.getDns2());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Blacklist Google Play Store from using DNS as apparently it doesn't let download anything on Oreo
+            List<AppInfo> appInfos = AdhellFactory.getInstance().getAppDatabase().applicationInfoDao().getAppsAlphabetically();
+            for (AppInfo appInfo : appInfos) {
+                final String packageName = appInfo.packageName;
+                if (packageName != null && !packageName.equalsIgnoreCase("com.android.vending")) {
+                    DomainFilterRule rule = new DomainFilterRule(new AppIdentity(appInfo.packageName, null));
+                    rule.setDns1(dns1);
+                    rule.setDns2(dns2);
+                    rules.add(rule);
+                }
+            }
+        } else {
+            DomainFilterRule rule = new DomainFilterRule(new AppIdentity(Firewall.FIREWALL_ALL_PACKAGES, null));
+            rule.setDns1(dns1);
+            rule.setDns2(dns2);
+            rules.add(rule);
+        }
+
+        try {
+            AdhellFactory.getInstance().addDomainFilterRules(rules, handler);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

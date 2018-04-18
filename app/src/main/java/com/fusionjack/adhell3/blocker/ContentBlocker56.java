@@ -1,34 +1,38 @@
 package com.fusionjack.adhell3.blocker;
 
-import android.support.annotation.Nullable;
-import com.fusionjack.adhell3.App;
+import android.os.Handler;
+
 import com.fusionjack.adhell3.db.AppDatabase;
 import com.fusionjack.adhell3.db.entity.AppInfo;
 import com.fusionjack.adhell3.db.entity.UserBlockUrl;
 import com.fusionjack.adhell3.db.entity.WhiteUrl;
+import com.fusionjack.adhell3.utils.AdhellFactory;
 import com.fusionjack.adhell3.utils.BlockUrlPatternsMatch;
 import com.fusionjack.adhell3.utils.BlockUrlUtils;
 import com.fusionjack.adhell3.utils.LogUtils;
+import com.google.common.collect.Lists;
 import com.sec.enterprise.AppIdentity;
 import com.sec.enterprise.firewall.DomainFilterRule;
 import com.sec.enterprise.firewall.Firewall;
 import com.sec.enterprise.firewall.FirewallResponse;
 import com.sec.enterprise.firewall.FirewallRule;
 
-import javax.inject.Inject;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.StringTokenizer;
 
 public class ContentBlocker56 implements ContentBlocker {
     private static ContentBlocker56 mInstance = null;
 
-    @Nullable
-    @Inject
-    Firewall mFirewall;
-    @Inject
-    AppDatabase appDatabase;
+    private Firewall firewall;
+    private AppDatabase appDatabase;
+    private Handler handler;
 
     private ContentBlocker56() {
-        App.get().getAppComponent().inject(this);
+        this.appDatabase = AdhellFactory.getInstance().getAppDatabase();
+        this.firewall = AdhellFactory.getInstance().getFirewall();
     }
 
     public static ContentBlocker56 getInstance() {
@@ -46,37 +50,46 @@ public class ContentBlocker56 implements ContentBlocker {
     }
 
     @Override
+    public void setHandler(Handler handler) {
+        this.handler = handler;
+    }
+
+    @Override
     public boolean enableBlocker() {
-        if (mFirewall == null) {
+        if (firewall == null) {
             return false;
         }
 
         try {
-            if (!mFirewall.isFirewallEnabled()) {
-                LogUtils.getInstance().writeInfo("\nEnabling firewall...");
-                mFirewall.enableFirewall(true);
+            processCustomRules();
+            processMobileRestrictedApps();
+            processWhitelistedApps();
+            processWhitelistedDomains();
+            processBlockedDomains();
+
+            if (!firewall.isFirewallEnabled()) {
+                LogUtils.getInstance().writeInfo("\nEnabling firewall...", handler);
+                firewall.enableFirewall(true);
             }
-            if (!mFirewall.isDomainFilterReportEnabled()) {
-                LogUtils.getInstance().writeInfo("Enabling firewall report...");
-                mFirewall.enableDomainFilterReport(true);
+            if (!firewall.isDomainFilterReportEnabled()) {
+                LogUtils.getInstance().writeInfo("Enabling firewall report...", handler);
+                firewall.enableDomainFilterReport(true);
             }
-        } catch (SecurityException e) {
-            LogUtils.getInstance().writeError("Failed to enable firewall: " + e.getMessage(), e);
+            LogUtils.getInstance().writeInfo("\nFirewall is enabled.", handler);
+        } catch (Exception e) {
+            disableBlocker();
+            e.printStackTrace();
             return false;
-        } finally {
-            LogUtils.getInstance().writeInfo("Done");
-            LogUtils.getInstance().close();
         }
 
         return true;
     }
 
-    @Override
-    public void processCustomRules() throws Exception {
-        LogUtils.getInstance().writeInfo("\nProcessing custom rules...");
+    private void processCustomRules() throws Exception {
+        LogUtils.getInstance().writeInfo("\nProcessing custom rules...", handler);
 
+        int count = 0;
         List<UserBlockUrl> userBlockUrls = appDatabase.userBlockUrlDao().getAll2();
-        LogUtils.getInstance().writeInfo("User blocked URL size: " + userBlockUrls.size());
         for (UserBlockUrl userBlockUrl : userBlockUrls) {
             if (userBlockUrl.url.indexOf('|') != -1) {
                 StringTokenizer tokens = new StringTokenizer(userBlockUrl.url, "|");
@@ -92,18 +105,20 @@ public class ContentBlocker56 implements ContentBlocker {
                     firewallRules[0].setPortNumber(port);
                     firewallRules[0].setApplication(new AppIdentity(packageName, null));
 
-                    addFirewallRules(firewallRules);
+                    AdhellFactory.getInstance().addFirewallRules(firewallRules, handler);
+                    ++count;
                 }
             }
         }
+
+        LogUtils.getInstance().writeInfo("Custom rule size: " + count, handler);
     }
 
-    @Override
-    public void processMobileRestrictedApps() throws Exception {
-        LogUtils.getInstance().writeInfo("\nProcessing mobile restricted apps...");
+    private void processMobileRestrictedApps() throws Exception {
+        LogUtils.getInstance().writeInfo("\nProcessing mobile restricted apps...", handler);
 
         List<AppInfo> restrictedApps = appDatabase.applicationInfoDao().getMobileRestrictedApps();
-        LogUtils.getInstance().writeInfo("Restricted apps size: " + restrictedApps.size());
+        LogUtils.getInstance().writeInfo("Restricted apps size: " + restrictedApps.size(), handler);
         if (restrictedApps.size() == 0) {
             return;
         }
@@ -116,58 +131,54 @@ public class ContentBlocker56 implements ContentBlocker {
             mobileRules[i].setApplication(new AppIdentity(restrictedApps.get(i).packageName, null));
         }
 
-        addFirewallRules(mobileRules);
+        AdhellFactory.getInstance().addFirewallRules(mobileRules, handler);
     }
 
-    @Override
-    public void processWhitelistedApps() throws Exception {
-        LogUtils.getInstance().writeInfo("\nProcessing white-listed apps...");
+    private void processWhitelistedApps() throws Exception {
+        LogUtils.getInstance().writeInfo("\nProcessing white-listed apps...", handler);
 
         // Create domain filter rule for white listed apps
         List<AppInfo> whitelistedApps = appDatabase.applicationInfoDao().getWhitelistedApps();
-        LogUtils.getInstance().writeInfo("Whitelisted apps size: " + whitelistedApps.size());
+        LogUtils.getInstance().writeInfo("Whitelisted apps size: " + whitelistedApps.size(), handler);
         if (whitelistedApps.size() == 0) {
             return;
         }
+
         List<DomainFilterRule> rules = new ArrayList<>();
         List<String> superAllow = new ArrayList<>();
         superAllow.add("*");
         for (AppInfo app : whitelistedApps) {
-            LogUtils.getInstance().writeInfo("Whitelisted app: " + app.packageName);
+            LogUtils.getInstance().writeInfo("Whitelisted app: " + app.packageName, handler);
             rules.add(new DomainFilterRule(new AppIdentity(app.packageName, null), new ArrayList<>(), superAllow));
         }
-        addDomainFilterRules(rules);
+        AdhellFactory.getInstance().addDomainFilterRules(rules, handler);
     }
 
-    @Override
-    public void processWhitelistedDomains() throws Exception {
-        LogUtils.getInstance().writeInfo("\nProcessing white-listed domains...");
+    private void processWhitelistedDomains() throws Exception {
+        LogUtils.getInstance().writeInfo("\nProcessing white-listed domains...", handler);
 
         // Process user-defined white list
         // 1. URL for all packages: url
         // 2. URL for individual package: packageName|url
         List<WhiteUrl> whiteUrls = appDatabase.whiteUrlDao().getAll2();
-        LogUtils.getInstance().writeInfo("User whitelisted URL size: " + whiteUrls.size());
+        LogUtils.getInstance().writeInfo("User whitelisted URL size: " + whiteUrls.size(), handler);
         if (whiteUrls.size() == 0) {
             return;
         }
 
-        Set<String> denyList = BlockUrlUtils.getUniqueBlockedUrls(appDatabase);
+        Set<String> denyList = BlockUrlUtils.getUniqueBlockedUrls(appDatabase, handler, false);
         for (WhiteUrl whiteUrl : whiteUrls) {
             if (whiteUrl.url.indexOf('|') != -1) {
                 StringTokenizer tokens = new StringTokenizer(whiteUrl.url, "|");
                 if (tokens.countTokens() == 2) {
                     final String packageName = tokens.nextToken();
                     final String url = tokens.nextToken();
+                    LogUtils.getInstance().writeInfo("PackageName: " + packageName + ", WhiteUrl: " + url, handler);
+
                     final AppIdentity appIdentity = new AppIdentity(packageName, null);
-                    LogUtils.getInstance().writeInfo("PackageName: " + packageName + ", WhiteUrl: " + url);
-
-                    List<String> whiteList = new ArrayList<>();
-                    whiteList.add(url);
-
-                    List<DomainFilterRule> rules = new ArrayList<>();
-                    rules.add(new DomainFilterRule(appIdentity, new ArrayList<>(denyList), whiteList));
-                    addDomainFilterRules(rules);
+                    List<String> allowList = new ArrayList<>();
+                    allowList.add(url);
+                    processDomains(appIdentity, new ArrayList<>(denyList), allowList);
                 }
             }
         }
@@ -178,105 +189,76 @@ public class ContentBlocker56 implements ContentBlocker {
             if (whiteUrl.url.indexOf('|') == -1) {
                 final String url = BlockUrlPatternsMatch.getValidatedUrl(whiteUrl.url);
                 allowList.add(url);
-                LogUtils.getInstance().writeInfo("WhiteUrl: " + url);
+                LogUtils.getInstance().writeInfo("WhiteUrl: " + url, handler);
             }
         }
         if (allowList.size() > 0) {
             final AppIdentity appIdentity = new AppIdentity("*", null);
             List<DomainFilterRule> rules = new ArrayList<>();
             rules.add(new DomainFilterRule(appIdentity, new ArrayList<>(), new ArrayList<>(allowList)));
-            addDomainFilterRules(rules);
+            AdhellFactory.getInstance().addDomainFilterRules(rules, handler);
+        }
+    }
+
+    private void processBlockedDomains() throws Exception {
+        LogUtils.getInstance().writeInfo("\nProcessing blocked domains...", handler);
+
+        Set<String> denyList = BlockUrlUtils.getUniqueBlockedUrls(appDatabase, handler, true);
+        final AppIdentity appIdentity = new AppIdentity("*", null);
+        processDomains(appIdentity, new ArrayList<>(denyList), new ArrayList<>());
+    }
+
+    private void processDomains(AppIdentity appIdentity, List<String> denyList, List<String> allowList) throws Exception {
+        int start = 0;
+        List<List<String>> chunks = Lists.partition(denyList, 5000);
+        for (List<String> chunk : chunks) {
+            LogUtils.getInstance().writeInfo("\nProcessing " + start + " to " + (start + chunk.size()) + " domains...", handler);
+            start += chunk.size();
+
+            List<DomainFilterRule> rules = new ArrayList<>();
+            rules.add(new DomainFilterRule(appIdentity, chunk, allowList));
+            AdhellFactory.getInstance().addDomainFilterRules(rules, handler);
         }
     }
 
     @Override
-    public void processBlockedDomains() throws Exception {
-        LogUtils.getInstance().writeInfo("\nProcessing blocked domains...");
-
-        Set<String> denyList = BlockUrlUtils.getUniqueBlockedUrls(appDatabase);
-        List<DomainFilterRule> rules = new ArrayList<>();
-        AppIdentity appIdentity = new AppIdentity("*", null);
-        rules.add(new DomainFilterRule(appIdentity, new ArrayList<>(denyList), new ArrayList<>()));
-        addDomainFilterRules(rules);
-    }
-
-    @Override
     public boolean disableBlocker() {
-        if (mFirewall == null) {
+        if (firewall == null) {
             return false;
         }
 
         FirewallResponse[] response;
         try {
-            // Clear IP rules
-            response = mFirewall.clearRules(Firewall.FIREWALL_ALL_RULES);
-            LogUtils.getInstance().writeInfo(response == null ? "No response" : response[0].getMessage());
+            // Clear firewall rules
+            LogUtils.getInstance().writeInfo("\nClearing firewall rules...", handler);
+            response = firewall.clearRules(Firewall.FIREWALL_ALL_RULES);
+            LogUtils.getInstance().writeInfo(response == null ? "No response" : response[0].getMessage(), handler);
 
             // Clear domain filter rules
-            response = mFirewall.removeDomainFilterRules(DomainFilterRule.CLEAR_ALL);
-            LogUtils.getInstance().writeInfo(response == null ? "No response" : response[0].getMessage());
+            LogUtils.getInstance().writeInfo("\nClearing domain rules...", handler);
+            response = firewall.removeDomainFilterRules(DomainFilterRule.CLEAR_ALL);
+            LogUtils.getInstance().writeInfo(response == null ? "No response" : response[0].getMessage(), handler);
 
-            if (mFirewall.isFirewallEnabled()) {
-                mFirewall.enableFirewall(false);
+            if (firewall.isFirewallEnabled()) {
+                firewall.enableFirewall(false);
             }
-            if (mFirewall.isDomainFilterReportEnabled()) {
-                mFirewall.enableDomainFilterReport(false);
+            if (firewall.isDomainFilterReportEnabled()) {
+                firewall.enableDomainFilterReport(false);
             }
+
+            LogUtils.getInstance().writeInfo("\nFirewall is disabled.", handler);
         } catch (SecurityException ex) {
-            LogUtils.getInstance().writeError("Failed to remove firewall rules", ex);
+            LogUtils.getInstance().writeError("\nFailed to disable firewall: " + ex.getMessage(), ex, handler);
             return false;
+        } finally {
+            LogUtils.getInstance().close();
         }
+
         return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return mFirewall != null && mFirewall.isFirewallEnabled();
-    }
-
-    private void addDomainFilterRules(List<DomainFilterRule> domainRules) throws Exception {
-        if (mFirewall == null) {
-            throw new Exception("Knox Firewall is not initialized");
-        }
-
-        LogUtils.getInstance().writeInfo("Adding domain filter rule to Knox Firewall...");
-        FirewallResponse[] response;
-        try {
-            response = mFirewall.addDomainFilterRules(domainRules);
-            if (response == null) {
-                throw new Exception("There was no response from Knox Firewall");
-            } else {
-                LogUtils.getInstance().writeInfo("Result: " + response[0].getMessage());
-                if (FirewallResponse.Result.SUCCESS != response[0].getResult()) {
-                    throw new Exception(response[0].getMessage());
-                }
-            }
-        } catch (SecurityException ex) {
-            // Missing required MDM permission
-            LogUtils.getInstance().writeError("Failed to add domain filter rule to Knox Firewall", ex);
-        }
-    }
-
-    private void addFirewallRules(FirewallRule[] firewallRules) throws Exception {
-        if (mFirewall == null) {
-            throw new Exception("Knox Firewall is not initialized");
-        }
-
-        LogUtils.getInstance().writeInfo("Adding firewall rule to Knox Firewall...");
-        FirewallResponse[] response;
-        try {
-            response = mFirewall.addRules(firewallRules);
-            if (response == null) {
-                throw new Exception("There was no response from Knox Firewall");
-            } else {
-                LogUtils.getInstance().writeInfo("Result: " + response[0].getMessage());
-                if (FirewallResponse.Result.SUCCESS != response[0].getResult()) {
-                    throw new Exception(response[0].getMessage());
-                }
-            }
-        } catch (SecurityException ex) {
-            // Missing required MDM permission
-            LogUtils.getInstance().writeError("Failed to add firewall rules to Knox Firewall", ex);
-        }
+        return firewall != null && firewall.isFirewallEnabled();
     }
 }

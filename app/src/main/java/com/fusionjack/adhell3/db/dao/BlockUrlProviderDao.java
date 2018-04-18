@@ -15,10 +15,10 @@ import java.util.List;
 @Dao
 public interface BlockUrlProviderDao {
 
-    @Query("SELECT * FROM BlockUrlProviders")
+    @Query("SELECT * FROM BlockUrlProviders ORDER BY deletable ASC")
     List<BlockUrlProvider> getAll2();
 
-    @Query("SELECT * FROM BlockUrlProviders")
+    @Query("SELECT * FROM BlockUrlProviders ORDER BY deletable ASC")
     LiveData<List<BlockUrlProvider>> getAll();
 
     @Query("SELECT * FROM BlockUrlProviders WHERE selected = :selected")

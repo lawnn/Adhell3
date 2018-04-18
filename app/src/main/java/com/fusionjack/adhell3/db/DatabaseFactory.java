@@ -4,7 +4,6 @@ import android.os.Environment;
 import android.util.JsonReader;
 import android.util.JsonWriter;
 
-import com.fusionjack.adhell3.App;
 import com.fusionjack.adhell3.db.entity.AppInfo;
 import com.fusionjack.adhell3.db.entity.AppPermission;
 import com.fusionjack.adhell3.db.entity.BlockUrlProvider;
@@ -14,6 +13,7 @@ import com.fusionjack.adhell3.db.entity.RestrictedPackage;
 import com.fusionjack.adhell3.db.entity.UserBlockUrl;
 import com.fusionjack.adhell3.db.entity.WhiteUrl;
 import com.fusionjack.adhell3.utils.AdhellAppIntegrity;
+import com.fusionjack.adhell3.utils.AdhellFactory;
 import com.fusionjack.adhell3.utils.DeviceAdminInteractor;
 
 import java.io.File;
@@ -29,17 +29,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import javax.inject.Inject;
-
 public final class DatabaseFactory {
     private static final String BACKUP_FILENAME = "adhell_backup.txt";
     private static DatabaseFactory instance;
-
-    @Inject
-    AppDatabase appDatabase;
+    private AppDatabase appDatabase;
 
     private DatabaseFactory() {
-        App.get().getAppComponent().inject(this);
+        this.appDatabase = AdhellFactory.getInstance().getAppDatabase();
     }
 
     public static DatabaseFactory getInstance() {
@@ -260,7 +256,7 @@ public final class DatabaseFactory {
         appDatabase.firewallWhitelistedPackageDao().insertAll(whitelistedPackages);
 
         for (FirewallWhitelistedPackage whitelistedPackage : whitelistedPackages) {
-            AppInfo appInfo = appDatabase.applicationInfoDao().getByPackageName(whitelistedPackage.packageName);
+            AppInfo appInfo = appDatabase.applicationInfoDao().getAppByPackageName(whitelistedPackage.packageName);
             if (appInfo != null) {
                 appInfo.adhellWhitelisted = true;
                 appDatabase.applicationInfoDao().update(appInfo);
@@ -297,7 +293,7 @@ public final class DatabaseFactory {
         appDatabase.disabledPackageDao().insertAll(disabledPackages);
 
         for (DisabledPackage disabledPackage : disabledPackages) {
-            AppInfo appInfo = appDatabase.applicationInfoDao().getByPackageName(disabledPackage.packageName);
+            AppInfo appInfo = appDatabase.applicationInfoDao().getAppByPackageName(disabledPackage.packageName);
             if (appInfo != null) {
                 appInfo.disabled = true;
                 appDatabase.applicationInfoDao().update(appInfo);
@@ -334,7 +330,7 @@ public final class DatabaseFactory {
         appDatabase.restrictedPackageDao().insertAll(restrictedPackages);
 
         for (RestrictedPackage restrictedPackage : restrictedPackages) {
-            AppInfo appInfo = appDatabase.applicationInfoDao().getByPackageName(restrictedPackage.packageName);
+            AppInfo appInfo = appDatabase.applicationInfoDao().getAppByPackageName(restrictedPackage.packageName);
             if (appInfo != null) {
                 appInfo.mobileRestricted = true;
                 appDatabase.applicationInfoDao().update(appInfo);

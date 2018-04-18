@@ -3,10 +3,11 @@ package com.fusionjack.adhell3.adapter;
 import android.app.enterprise.AppPermissionControlInfo;
 import android.app.enterprise.ApplicationPermissionControlPolicy;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
-import android.support.annotation.Nullable;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -16,47 +17,54 @@ import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import com.fusionjack.adhell3.App;
 import com.fusionjack.adhell3.R;
 import com.fusionjack.adhell3.db.AppDatabase;
 import com.fusionjack.adhell3.db.entity.AppInfo;
 import com.fusionjack.adhell3.db.entity.AppPermission;
 import com.fusionjack.adhell3.utils.AdhellAppIntegrity;
+import com.fusionjack.adhell3.utils.AdhellFactory;
+import com.fusionjack.adhell3.utils.AppCache;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-
-import javax.inject.Inject;
 
 public class AdhellPermissionInAppsAdapter extends RecyclerView.Adapter<AdhellPermissionInAppsAdapter.ViewHolder> {
     private static final String TAG = AdhellPermissionInAppsAdapter.class.getCanonicalName();
-
-    @Inject
-    PackageManager mPackageManager;
-
-    @Nullable
-    @Inject
-    ApplicationPermissionControlPolicy mAppControlPolicy;
 
     public String currentPermissionName;
     private Set<String> permissionBlacklistedPackageNames;
     private List<AppInfo> appInfos;
     private AppDatabase appDatabase;
+    private ApplicationPermissionControlPolicy appControlPolicy;
+    private Map<String, Drawable> appIcons;
+    private WeakReference<Context> contextReference;
 
-    public AdhellPermissionInAppsAdapter(List<AppInfo> packageInfos, AppDatabase appDatabase) {
-        App.get().getAppComponent().inject(this);
-        this.appDatabase = appDatabase;
+    public AdhellPermissionInAppsAdapter(List<AppInfo> packageInfos, Context context) {
+        this.appDatabase = AdhellFactory.getInstance().getAppDatabase();
+        this.appControlPolicy = AdhellFactory.getInstance().getAppControlPolicy();
         this.appInfos = packageInfos;
+        this.contextReference = new WeakReference<>(context);
+
+        Handler handler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                notifyDataSetChanged();
+            }
+        };
+        this.appIcons = AppCache.getInstance(context, handler).getIcons();
+
         updatePermissionBlacklistedPackages();
     }
 
     public void updatePermissionBlacklistedPackages() {
-        if (mAppControlPolicy == null) {
+        if (appControlPolicy == null) {
             return;
         }
 
-        List<AppPermissionControlInfo> appPermissionControlInfos = mAppControlPolicy.getPackagesFromPermissionBlackList();
+        List<AppPermissionControlInfo> appPermissionControlInfos = appControlPolicy.getPackagesFromPermissionBlackList();
         if (appPermissionControlInfos == null || appPermissionControlInfos.size() == 0) {
             permissionBlacklistedPackageNames = null;
             return;
@@ -93,11 +101,9 @@ public class AdhellPermissionInAppsAdapter extends RecyclerView.Adapter<AdhellPe
         } else {
             holder.systemOrNotTextView.setVisibility(View.GONE);
         }
-        Drawable icon = null;
-        try {
-            icon = mPackageManager.getApplicationIcon(appInfo.packageName);
-        } catch (PackageManager.NameNotFoundException e) {
-            Log.i(TAG, "Application icon not found");
+        Drawable icon = appIcons.get(appInfo.packageName);
+        if (icon == null) {
+            icon = contextReference.get().getResources().getDrawable(android.R.drawable.sym_def_app_icon);
         }
         holder.appIconImageView.setImageDrawable(icon);
         holder.appPermissionSwitch.setChecked(true);
@@ -138,7 +144,7 @@ public class AdhellPermissionInAppsAdapter extends RecyclerView.Adapter<AdhellPe
 
         @Override
         public void onClick(View v) {
-            if (mAppControlPolicy == null) {
+            if (appControlPolicy == null) {
                 return;
             }
 
@@ -154,14 +160,14 @@ public class AdhellPermissionInAppsAdapter extends RecyclerView.Adapter<AdhellPe
             appPermission.policyPackageId = AdhellAppIntegrity.DEFAULT_POLICY_ID;
 
             if (permissionBlacklistedPackageNames != null && permissionBlacklistedPackageNames.contains(appInfo.packageName)) {
-                boolean isBlacklisted = mAppControlPolicy.removePackagesFromPermissionBlackList(currentPermissionName, list);
+                boolean isBlacklisted = appControlPolicy.removePackagesFromPermissionBlackList(currentPermissionName, list);
                 Log.d(TAG, "Is removed: " + isBlacklisted);
                 if (isBlacklisted) {
                     appPermissionSwitch.setChecked(true);
                     AsyncTask.execute(() -> appDatabase.appPermissionDao().delete(appPermission));
                 }
             } else {
-                boolean success = mAppControlPolicy.addPackagesToPermissionBlackList(currentPermissionName, list);
+                boolean success = appControlPolicy.addPackagesToPermissionBlackList(currentPermissionName, list);
                 Log.d(TAG, "Is added to blacklist: " + success);
                 if (success) {
                     appPermissionSwitch.setChecked(false);

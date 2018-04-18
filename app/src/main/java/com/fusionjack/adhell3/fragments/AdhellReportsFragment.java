@@ -14,11 +14,12 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.fusionjack.adhell3.App;
 import com.fusionjack.adhell3.R;
 import com.fusionjack.adhell3.adapter.ReportBlockedUrlAdapter;
 import com.fusionjack.adhell3.db.AppDatabase;
 import com.fusionjack.adhell3.db.entity.ReportBlockedUrl;
+import com.fusionjack.adhell3.utils.AdhellFactory;
+import com.fusionjack.adhell3.utils.AppCache;
 import com.sec.enterprise.firewall.DomainFilterReport;
 import com.sec.enterprise.firewall.Firewall;
 
@@ -27,26 +28,17 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import javax.inject.Inject;
-
 
 public class AdhellReportsFragment extends Fragment {
     private AppCompatActivity parentActivity;
-    private AppDatabase appDatabase;
-
-    @Nullable
-    @Inject
-    Firewall firewall;
 
     public AdhellReportsFragment() {
-        App.get().getAppComponent().inject(this);
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         parentActivity = (AppCompatActivity) getActivity();
-        appDatabase = AppDatabase.getAppDatabase(getContext());
     }
 
     @Override
@@ -59,11 +51,11 @@ public class AdhellReportsFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_adhell_reports, container, false);
         SwipeRefreshLayout swipeContainer = view.findViewById(R.id.swipeContainer);
-        swipeContainer.setOnRefreshListener(() -> {
-            new RefreshAsynckTask(getContext(), firewall, appDatabase).execute();
-        });
+        swipeContainer.setOnRefreshListener(() -> new RefreshAsynckTask(getContext()).execute());
 
-        new RefreshAsynckTask(getContext(), firewall, appDatabase).execute();
+        AppCache.getInstance(getContext(), null);
+
+        new RefreshAsynckTask(getContext()).execute();
 
         return view;
     }
@@ -71,12 +63,10 @@ public class AdhellReportsFragment extends Fragment {
     private static class RefreshAsynckTask extends AsyncTask<Void, Void, List<ReportBlockedUrl>> {
         private WeakReference<Context> contextReference;
         private Firewall firewall;
-        private AppDatabase appDatabase;
 
-        RefreshAsynckTask(Context context, Firewall firewall, AppDatabase appDatabase) {
+        RefreshAsynckTask(Context context) {
             this.contextReference = new WeakReference<>(context);
-            this.firewall = firewall;
-            this.appDatabase = appDatabase;
+            this.firewall = AdhellFactory.getInstance().getFirewall();
         }
 
         @Override
@@ -88,6 +78,7 @@ public class AdhellReportsFragment extends Fragment {
             }
 
             long yesterday = yesterday();
+            AppDatabase appDatabase = AdhellFactory.getInstance().getAppDatabase();
             appDatabase.reportBlockedUrlDao().deleteBefore(yesterday);
 
             ReportBlockedUrl lastBlockedUrl = appDatabase.reportBlockedUrlDao().getLastBlockedDomain();

@@ -4,10 +4,8 @@ import android.app.enterprise.AppPermissionControlInfo;
 import android.app.enterprise.ApplicationPermissionControlPolicy;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.fusionjack.adhell3.App;
 import com.fusionjack.adhell3.db.AppDatabase;
 import com.fusionjack.adhell3.db.entity.AppInfo;
 import com.fusionjack.adhell3.db.entity.AppPermission;
@@ -22,11 +20,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Inject;
-
 public class AdhellAppIntegrity {
-    public static final String ADHELL_STANDARD_PACKAGE = "https://goo.gl/soJyHa";
-    public static final int BLOCK_URL_LIMIT = 15000;
+    public static final String ADHELL_STANDARD_PACKAGE = "https://bit.ly/2HfsqkV";
+    public static final int BLOCK_URL_LIMIT = 100000;
     public final static String DEFAULT_POLICY_ID = "default-policy";
 
     private static final String TAG = AdhellAppIntegrity.class.getCanonicalName();
@@ -38,21 +34,16 @@ public class AdhellAppIntegrity {
     private static final String CHECK_ADHELL_STANDARD_PACKAGE = "adhell_adhell_standard_package";
     private static final String CHECK_PACKAGE_DB = "adhell_packages_filled_db";
 
-    @Inject
-    AppDatabase appDatabase;
-
-    @Inject
-    SharedPreferences sharedPreferences;
-
-    @Inject
-    PackageManager packageManager;
-
-    @Nullable
-    @Inject
-    ApplicationPermissionControlPolicy applicationPermissionControlPolicy;
+    private AppDatabase appDatabase;
+    private SharedPreferences sharedPreferences;
+    private PackageManager packageManager;
+    private ApplicationPermissionControlPolicy appPermissionControlPolicy;
 
     public AdhellAppIntegrity() {
-        App.get().getAppComponent().inject(this);
+        this.appDatabase = AdhellFactory.getInstance().getAppDatabase();
+        this.packageManager = AdhellFactory.getInstance().getPackageManager();
+        this.sharedPreferences = AdhellFactory.getInstance().getSharedPreferences();
+        this.appPermissionControlPolicy = AdhellFactory.getInstance().getAppControlPolicy();
     }
 
     public void check() {
@@ -158,7 +149,7 @@ public class AdhellAppIntegrity {
     }
 
     private void moveAppPermissionsToAppPermissionTable() {
-        if (applicationPermissionControlPolicy == null) {
+        if (appPermissionControlPolicy == null) {
             Log.w(TAG, "applicationPermissionControlPolicy is null");
             return;
         }
@@ -168,7 +159,7 @@ public class AdhellAppIntegrity {
         }
 
         List<AppPermissionControlInfo> appPermissionControlInfos
-                = applicationPermissionControlPolicy.getPackagesFromPermissionBlackList();
+                = appPermissionControlPolicy.getPackagesFromPermissionBlackList();
         if (appPermissionControlInfos == null || appPermissionControlInfos.size() == 0) {
             Log.d(TAG, "No blacklisted packages in applicationPermissionControlPolicy");
             return;
@@ -235,7 +226,7 @@ public class AdhellAppIntegrity {
     }
 
     public void fillPackageDb() {
-        if (appDatabase.applicationInfoDao().getAll().size() > 0) {
+        if (appDatabase.applicationInfoDao().getAppsAlphabetically().size() > 0) {
             return;
         }
         AppsListDBInitializer.getInstance().fillPackageDb(packageManager);

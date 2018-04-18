@@ -1,19 +1,85 @@
-# How to install ADhell 3?
+# Disclaimer
+Adhell3 is merely an app that is using the Samsung Knox Standard SDK APIs. <br/>
+In order to use these APIs, the Knox Standard SDK and an Enterprise License Key (ELM) are needed. <br/>
+These are Samsung's properties which are not available in this repository and therefore they need to be downloaded and obtained by the developer after accepting the agreement given by Samsung. <br/>
+The developer is then responsible how this app will be used and I don't take any responsibilities of any damages caused by this app. <br/>
 
-Step 1: Download Android Studio from https://developer.android.com/studio/install.html
-
-Step 2: Enroll as a developer on https://seap.samsung.com/enrollment. Go to Generate License Keys and generate a key for Enterprise License Key.
-
-Step 3: Plug in your phone and Enable USB Debugging. (Settings > About phone > Software information > Press about 10 times on Build Number until a message “You are now a developer!” appears. > Go back to Settings > Developer Options > Turn on USB Debugging.
-
-Step 4: Download Adhell 3 from https://github.com/neberej/Adhell3/archive/master.zip and extract to Adhell folder.
-
-Step 5: Go to https://seap.samsung.com/sdk/knox-standard-android and download the SDK. Extract and copy the contents of /addon_mdm_5_9_samsung_electronics_24/libs/ into your Adhell/apps/libs folder. (Create libs folder if it doesn't exist).
+The Knox Standard SDK can be downloaded here: https://seap.samsung.com/sdk/knox-standard-android <br/>
+The Enterprise License Key can be obtained here: https://seap.samsung.com/license-keys/create/knox_standard_android <br/>
+The API can be found here: https://seap.samsung.com/api-references/android-standard/reference/packages.html
 
 
-Step 6: Open Android Studio, click on File > Open and point to Adhell folder. Find or Ctrl + Shift + F to search for `applicationID`. Replace the value of applicationID from `com.` to `com.somthingelse`. **<<--
-Make this unique**. Expand libs folder and select edm.jar, license.jar and rc.jar (whole Ctrl to multi-select) and Right Click > Add as library.  Nowclick on the green play button to deploy on your phone.
+# Background
+The original Adhell was developed by Samsung's developer. After he was forced to remove the code from internet by Samsung, FiendFyre was stepped up by providing the Adhell2. But after a while, it is also discontinued.<br/>
+Adhell3 is an extension of previous discontinued Adhell2 app with more additional features.
 
-Step 7: Open app on your phone, give admin priviledges, enter your Knox key (from samsung website) and turn on SABS.
 
-Done!!
+## Features
+- Mobile internet blocker<br/>
+Disable internet access completely when you are on mobile for specific apps. This can be useful to avoid watching video accidentally by using mobile data.
+
+- Custom deny firewall rule<br/>
+This can be used for example to define a custom firewall rule to block ads for Chrome app on port 53 for all ip addresses:<br/>
+    `com.android.chrome|*|53`
+
+- Whitelist URL for a specific app<br/>
+When you have a domain that you want to block system wide, but you need this domain on a particular app. Otherwise, the app won't work.<br/>
+Instead whitelist-ing this app, you can just whitelist that domain for this app.<br/>
+Example: Block the domain `graph.facebook.com` system wide, but allows it for Facebook Messenger so that it can be used for login:<br/>
+    `com.facebook.orca|graph.facebook.com`
+
+- Support local host source<br/>
+The host file can be located on internal or external storage.<br/>
+An example to use host.txt file which is located at internal storage:<br/>
+    `file:///mnt/sdcard/hosts.txt`
+
+- Show the content of host source<br/>
+Show the list of domains of individual host source or the list of all blocked domains from all host sources.<br/>
+This can be useful to check whether particular URL is in the list.<br/>
+The list contains of unique domains.
+
+- Retain data across installations<br/>
+Adhell is usually generated with a unique package name. For the users that don't build Adhell with Android Studio, they cannot use the same package name. This means that they need to reinstall Adhell every times there is a new version and on every installation, they need to input the same data again and again. <br/>
+With this feature, there is no need to export or import functionality again. The data will be kept on internal storage and by next installation, the same data will be used.
+
+- Backup and restore database<br/>
+Backup the content of the database on internal storage so that later it can be used to restore the database if the database is somehow damage.
+
+
+## Prerequisite for building apk
+### Source code
+- Clone the project with `git clone git@gitlab.com:fusionjack/adhell3.git adhell3` OR
+- Download the source code as a zip file: https://gitlab.com/fusionjack/adhell3/repository/master/archive.zip
+- Set `applicationId` with a valid package name in `app\build.gradle`, e.g.: com.dhf.erz58384
+
+### Android Studio
+- Download and install latest Android Studio from https://developer.android.com/studio/index.html
+- Open the downloaded project in Android Studio
+- Install missing SDK and build-tools
+
+### Knox Standard SDK
+- Download it from https://seap.samsung.com/sdk/knox-standard-android
+- Take the `libs` content and put it to `app\libs` folder in the project 
+
+## How to build apk
+- Update the source code with `git pull --rebase` or re-download the source code as a zip file
+- Run these following commands in a console: <br/>
+`cd adhell3`<br/>
+`gradlew clean assembleDebug`
+- The generated apk is located in `app\build\outputs\apk\debug`
+
+## Prerequisite for using Adhell3
+You need an Enterprise License Key (ELM) in order to use Adhell3. <br/>
+You need to enroll as a developer in order to get this license. The license can be obtained here: https://seap.samsung.com/license-keys/create/knox_standard_android <br/>
+As for developer, the license needs to be renewed every 3 months. Don't forget to revoke the old license key before creating a new one.
+- Enroll as a developer with this link: https://seap.samsung.com/enrollment
+- Generate a license key with this link: https://seap.samsung.com/license-keys/create#section-knox-standard-sdk
+- Choose `Enterprise License Key`
+- Give an alias name, e.g. test
+- Click on `Generate License Key`
+
+
+## Credits
+Adhell3 is based on FiendFyre's Adhell2 which is heavily modified by me.<br/>
+### Icons
+https://material.io/icons
