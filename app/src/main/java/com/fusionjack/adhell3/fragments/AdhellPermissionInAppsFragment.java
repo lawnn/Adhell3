@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
@@ -23,6 +24,7 @@ import com.fusionjack.adhell3.adapter.AdhellPermissionInAppsAdapter;
 import com.fusionjack.adhell3.db.AppDatabase;
 import com.fusionjack.adhell3.db.entity.AppInfo;
 import com.fusionjack.adhell3.utils.AdhellFactory;
+import com.fusionjack.adhell3.utils.AppCache;
 import com.fusionjack.adhell3.viewmodel.SharedAppPermissionViewModel;
 
 import java.lang.ref.WeakReference;
@@ -45,6 +47,8 @@ public class AdhellPermissionInAppsFragment extends Fragment {
             parentActivity.getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             parentActivity.getSupportActionBar().setHomeButtonEnabled(true);
         }
+
+        AppCache.getInstance(getContext(), null);
 
         Bundle bundle = getArguments();
         if (bundle != null) {
@@ -101,23 +105,23 @@ public class AdhellPermissionInAppsFragment extends Fragment {
         protected void onPostExecute(List<AppInfo> appInfos) {
             Context context = contextReference.get();
             if (context != null) {
-                FragmentActivity activity = activityReference.get();
-                SharedAppPermissionViewModel viewModel = ViewModelProviders.of(activity).get(SharedAppPermissionViewModel.class);
-                RecyclerView permissionInAppsRecyclerView = ((Activity) context).findViewById(R.id.permissionInAppsRecyclerView);
-                permissionInAppsRecyclerView.setLayoutManager(new LinearLayoutManager(context));
-                RecyclerView.ItemDecoration itemDecoration = new DividerItemDecoration(context, DividerItemDecoration.VERTICAL);
-                permissionInAppsRecyclerView.addItemDecoration(itemDecoration);
+                RecyclerView recyclerView = ((Activity) context).findViewById(R.id.permissionInAppsRecyclerView);
+                if (recyclerView != null) {
+                    recyclerView.setLayoutManager(new LinearLayoutManager(context));
+                    DividerItemDecoration itemDecoration = new DividerItemDecoration(context, DividerItemDecoration.VERTICAL);
+                    itemDecoration.setDrawable(ContextCompat.getDrawable(context, R.drawable.divider));
+                    recyclerView.addItemDecoration(itemDecoration);
 
-                viewModel.getSelected().observe(fragment, permissionInfo -> {
-                    if (permissionInfo != null) {
-                        activity.setTitle(permissionInfo.name);
-                        AdhellPermissionInAppsAdapter adapter = new AdhellPermissionInAppsAdapter(appInfos, context);
-                        adapter.currentPermissionName = permissionInfo.name;
-                        adapter.updatePermissionBlacklistedPackages();
-                        permissionInAppsRecyclerView.setAdapter(adapter);
-                        adapter.notifyDataSetChanged();
-                    }
-                });
+                    FragmentActivity activity = activityReference.get();
+                    SharedAppPermissionViewModel viewModel = ViewModelProviders.of(activity).get(SharedAppPermissionViewModel.class);
+                    viewModel.getSelected().observe(fragment, permissionInfo -> {
+                        if (permissionInfo != null) {
+                            activity.setTitle(permissionInfo.name);
+                            AdhellPermissionInAppsAdapter adapter = new AdhellPermissionInAppsAdapter(permissionInfo.name, appInfos, context);
+                            recyclerView.setAdapter(adapter);
+                        }
+                    });
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:descendantFocusability="blocksDescendants">
 
     <ImageView
         android:id="@+id/appIcon"
@@ -8,10 +9,8 @@
         android:layout_height="40dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
         android:layout_margin="5dp"
-        android:clickable="false"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
         android:scaleType="centerCrop"
         android:src="@mipmap/ic_launcher"
         android:contentDescription="Adhell" />
@@ -26,7 +25,8 @@
         android:layout_margin="5dp"
         android:clickable="false"
         android:focusable="false"
-        android:focusableInTouchMode="false"/>
+        android:focusableInTouchMode="false"
+        />
 
     <TextView
         android:id="@+id/appName"
@@ -39,11 +39,7 @@
         android:layout_toLeftOf="@id/switchDisable"
         android:layout_toEndOf="@id/appIcon"
         android:layout_toRightOf="@id/appIcon"
-        android:clickable="false"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
         android:text="Adhell"
-        android:textColor="#000000"
         android:textStyle="bold"/>
 
     <TextView
@@ -57,11 +53,7 @@
         android:layout_toLeftOf="@id/switchDisable"
         android:layout_toEndOf="@id/appIcon"
         android:layout_toRightOf="@id/appIcon"
-        android:clickable="false"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
         android:text="System"
-        android:textColor="#000000"
         android:textSize="12sp"
         android:textStyle="italic"/>
 
@@ -77,12 +69,6 @@
         android:layout_toLeftOf="@id/switchDisable"
         android:layout_toEndOf="@id/appIcon"
         android:layout_toRightOf="@id/appIcon"
-        android:clickable="false"
-        android:ellipsize="end"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
-        android:lines="1"
-        android:text="com.android.google"
-        android:textColor="#000000"/>
+        android:text="com.android.google"/>
 
 </RelativeLayout>

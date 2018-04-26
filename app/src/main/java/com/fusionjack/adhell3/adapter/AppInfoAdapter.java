@@ -46,10 +46,6 @@ public class AppInfoAdapter extends BaseAdapter {
         }
     }
 
-    public void setItem(int position, AppInfo appInfo) {
-        applicationInfoList.set(position, appInfo);
-    }
-
     @Override
     public int getCount() {
         return this.applicationInfoList.size();
@@ -70,7 +66,7 @@ public class AppInfoAdapter extends BaseAdapter {
         Context context = contextReference.get();
         ViewHolder holder;
         if (convertView == null) {
-            convertView = LayoutInflater.from(context).inflate(R.layout.item_disable_app_list_view, parent, false);
+            convertView = LayoutInflater.from(context).inflate(R.layout.item_app_info, parent, false);
             holder = new ViewHolder();
             holder.nameH = convertView.findViewById(R.id.appName);
             holder.packageH = convertView.findViewById(R.id.packName);
@@ -89,8 +85,11 @@ public class AppInfoAdapter extends BaseAdapter {
             case DISABLER_FLAG:
                 checked = appInfo.disabled;
                 break;
-            case RESTRICTED_FLAG:
+            case MOBILE_RESTRICTED_FLAG:
                 checked = appInfo.mobileRestricted;
+                break;
+            case WIFI_RESTRICTED_FLAG:
+                checked = appInfo.wifiRestricted;
                 break;
             case WHITELISTED_FLAG:
                 checked = appInfo.adhellWhitelisted;

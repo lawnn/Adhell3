@@ -24,6 +24,9 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.util.Patterns;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -85,7 +88,42 @@ public class OthersPageFragment extends Fragment {
     }
 
     @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        if (page == PERMISSIONS_PAGE) {
+            inflater.inflate(R.menu.app_permission_menu, menu);
+        }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_enable_all:
+                enableAllPermissions();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void enableAllPermissions() {
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_enable_permissions, (ViewGroup) getView(), false);
+        new AlertDialog.Builder(context)
+            .setView(dialogView)
+            .setPositiveButton(android.R.string.yes, (dialog, whichButton) -> {
+                AsyncTask.execute(() -> {
+                   ApplicationPermissionControlPolicy policy = AdhellFactory.getInstance().getAppControlPolicy();
+                   if (policy != null) {
+                       policy.clearPackagesFromPermissionBlackList();
+                       AppDatabase appDatabase = AdhellFactory.getInstance().getAppDatabase();
+                       appDatabase.appPermissionDao().deleteAll();
+                   }
+                });
+            })
+            .setNegativeButton(android.R.string.no, null).show();
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        setHasOptionsMenu(true);
         View view = null;
         ContentBlocker contentBlocker = DeviceAdminInteractor.getInstance().getContentBlocker();
         switch (page) {
@@ -268,12 +306,10 @@ public class OthersPageFragment extends Fragment {
             for (String permissionName : sortedPermissionNameList) {
                 try {
                     PermissionInfo info = packageManager.getPermissionInfo(permissionName, PackageManager.GET_META_DATA);
-                    if (AdhellPermissionInfo.includePermission(info.protectionLevel)) {
-                        CharSequence description = info.loadDescription(packageManager);
-                        permissionList.add(new AdhellPermissionInfo(permissionName,
-                                description == null ? "No description" : description.toString(),
-                                info.protectionLevel));
-                    }
+                    CharSequence description = info.loadDescription(packageManager);
+                    permissionList.add(new AdhellPermissionInfo(permissionName,
+                            description == null ? "No description" : description.toString(),
+                            info.protectionLevel));
                 } catch (PackageManager.NameNotFoundException ignored) {
                 }
             }
@@ -291,15 +327,16 @@ public class OthersPageFragment extends Fragment {
             Context context = contextReference.get();
             if (context != null) {
                 ListView listView = ((Activity)context).findViewById(R.id.permissionInfoListView);
-                AdhellPermissionInfoAdapter adapter = new AdhellPermissionInfoAdapter(context, permissionInfos);
-                listView.setAdapter(adapter);
-
-                FragmentActivity activity = activityReference.get();
-                FragmentManager fragmentManager = activity.getSupportFragmentManager();
-                SharedAppPermissionViewModel viewModel = ViewModelProviders.of(activity).get(SharedAppPermissionViewModel.class);
-                listView.setOnItemClickListener(
+                if (listView != null) {
+                    AdhellPermissionInfoAdapter adapter = new AdhellPermissionInfoAdapter(context, permissionInfos);
+                    listView.setAdapter(adapter);
+                    listView.setOnItemClickListener(
                         (AdapterView<?> adView, View view2, int position, long id) -> {
                             AdhellPermissionInfo permissionInfo = permissionInfos.get(position);
+
+                            FragmentActivity activity = activityReference.get();
+                            FragmentManager fragmentManager = activity.getSupportFragmentManager();
+                            SharedAppPermissionViewModel viewModel = ViewModelProviders.of(activity).get(SharedAppPermissionViewModel.class);
                             viewModel.select(permissionInfo);
 
                             Bundle bundle = new Bundle();
@@ -312,10 +349,13 @@ public class OthersPageFragment extends Fragment {
                             fragmentTransaction.addToBackStack("permissionsInfo_permissionsInApp");
                             fragmentTransaction.commit();
                         }
-                );
+                    );
+                }
 
                 SwipeRefreshLayout swipeContainer = ((Activity) context).findViewById(R.id.swipeContainer);
-                swipeContainer.setRefreshing(false);
+                if (swipeContainer != null) {
+                    swipeContainer.setRefreshing(false);
+                }
             }
         }
     }
