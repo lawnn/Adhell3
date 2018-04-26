@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 public class AdhellAppIntegrity {
-    public static final String ADHELL_STANDARD_PACKAGE = "https://bit.ly/2HfsqkV";
+    public static final String ADHELL_STANDARD_PACKAGE = "https://sites.google.com/site/hosts2ch/ja";
     public static final int BLOCK_URL_LIMIT = 100000;
     public final static String DEFAULT_POLICY_ID = "default-policy";
 
