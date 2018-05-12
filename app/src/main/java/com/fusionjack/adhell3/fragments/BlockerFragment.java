@@ -11,6 +11,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -22,6 +23,7 @@ import android.widget.ListView;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import com.fusionjack.adhell3.BuildConfig;
 import com.fusionjack.adhell3.R;
 import com.fusionjack.adhell3.adapter.ReportBlockedUrlAdapter;
 import com.fusionjack.adhell3.blocker.ContentBlocker;
@@ -69,11 +71,20 @@ public class BlockerFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        if (parentActivity.getSupportActionBar() != null) {
-            parentActivity.getSupportActionBar().setDisplayHomeAsUpEnabled(false);
-            parentActivity.getSupportActionBar().setHomeButtonEnabled(false);
+        ActionBar actionBar = parentActivity.getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.setDisplayHomeAsUpEnabled(false);
+            actionBar.setHomeButtonEnabled(false);
+
+            View view = inflater.inflate(R.layout.activity_actionbar, container, false);
+            TextView subtitleTextView = view.findViewById(R.id.subtitleTextView);
+            if (subtitleTextView != null) {
+                String versionInfo = getContext().getResources().getString(R.string.version);
+                subtitleTextView.setText(String.format(versionInfo, BuildConfig.VERSION_NAME));
+            }
+            actionBar.setCustomView(view);
+            actionBar.setDisplayShowCustomEnabled(true);
         }
-        getActivity().setTitle(getString(R.string.blocker_fragment_title));
 
         View view = inflater.inflate(R.layout.fragment_blocker, container, false);
         domainSwitch = view.findViewById(R.id.domainRulesSwitch);
@@ -356,7 +367,11 @@ public class BlockerFragment extends Fragment {
                     ReportBlockedUrlAdapter adapter = new ReportBlockedUrlAdapter(context, reportBlockedUrls);
                     listView.setAdapter(adapter);
                     listView.setOnItemClickListener((AdapterView<?> adView, View view2, int position, long id) -> {
-                        View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_to_whitelist, listView, false);
+                        View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_question, listView, false);
+                        TextView titlTextView = dialogView.findViewById(R.id.titleTextView);
+                        titlTextView.setText(R.string.dialog_whitelist_domain_title);
+                        TextView questionTextView = dialogView.findViewById(R.id.questionTextView);
+                        questionTextView.setText(R.string.dialog_add_to_whitelist_question);
                         new AlertDialog.Builder(context)
                             .setView(dialogView)
                             .setPositiveButton(android.R.string.yes, (dialog, whichButton) ->

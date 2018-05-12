@@ -3,7 +3,6 @@ package com.fusionjack.adhell3;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
@@ -18,7 +17,6 @@ import com.fusionjack.adhell3.fragments.AppsFragment;
 import com.fusionjack.adhell3.fragments.BlockerFragment;
 import com.fusionjack.adhell3.fragments.DomainsFragment;
 import com.fusionjack.adhell3.fragments.OthersFragment;
-import com.fusionjack.adhell3.utils.AdhellAppIntegrity;
 import com.fusionjack.adhell3.utils.AdhellFactory;
 import com.fusionjack.adhell3.utils.DeviceAdminInteractor;
 import com.fusionjack.adhell3.utils.LogUtils;
@@ -34,19 +32,19 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (doubleBackToExitPressedOnce) {
-            int count = fragmentManager.getBackStackEntryCount();
-            if (count <= 1) {
+        int count = fragmentManager.getBackStackEntryCount();
+        if (count <= 1) {
+            if (doubleBackToExitPressedOnce) {
                 finish();
-            } else {
-                fragmentManager.popBackStackImmediate();
             }
+
+            this.doubleBackToExitPressedOnce = true;
+            Toast.makeText(this, "Press once again to exit", Toast.LENGTH_SHORT).show();
+
+            new Handler().postDelayed(() -> doubleBackToExitPressedOnce = false, 2000);
+        } else {
+            fragmentManager.popBackStackImmediate();
         }
-
-        this.doubleBackToExitPressedOnce = true;
-        Toast.makeText(this, "Press once again to exit", Toast.LENGTH_SHORT).show();
-
-        new Handler().postDelayed(() -> doubleBackToExitPressedOnce = false, 2000);
     }
 
     @Override
@@ -70,13 +68,6 @@ public class MainActivity extends AppCompatActivity {
             if (mAdminInteractor.isActiveAdmin() && mAdminInteractor.isKnoxEnabled()) {
                 onTabSelected(tabId);
             }
-        });
-
-        AsyncTask.execute(() -> {
-            AdhellAppIntegrity adhellAppIntegrity = new AdhellAppIntegrity();
-            adhellAppIntegrity.checkDefaultPolicyExists();
-            adhellAppIntegrity.checkAdhellStandardPackage();
-            adhellAppIntegrity.fillPackageDb();
         });
     }
 

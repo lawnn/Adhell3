@@ -8,6 +8,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
@@ -22,6 +23,7 @@ import android.widget.Toast;
 
 import com.fusionjack.adhell3.R;
 import com.fusionjack.adhell3.fragments.BlockerFragment;
+import com.fusionjack.adhell3.utils.AdhellAppIntegrity;
 import com.fusionjack.adhell3.utils.DeviceAdminInteractor;
 
 import io.reactivex.Single;
@@ -79,8 +81,8 @@ public class AdhellTurnOnDialogFragment extends DialogFragment {
             deviceAdminInteractor.forceEnableAdmin(this.getActivity());
         });
 
-        EditText knoxKeyEditText = (EditText)view.findViewById(R.id.knox_key_editText);
-        Button knoxKeyButton = (Button)view.findViewById(R.id.submit_knox_key_button);
+        EditText knoxKeyEditText = (EditText)view.findViewById(R.id.knoxKeyEditText);
+        Button knoxKeyButton = (Button)view.findViewById(R.id.submitKnoxKeyButton);
         SharedPreferences sharedPreferences = getActivity().getPreferences(Context.MODE_PRIVATE);
         String knoxKey = sharedPreferences.getString("knox_key", null);
         if (knoxKey!=null) {
@@ -182,6 +184,13 @@ public class AdhellTurnOnDialogFragment extends DialogFragment {
         if (deviceAdminInteractor.isKnoxEnabled()) {
             activateKnoxButton.setText("License activated");
             allowActivateKnox(false);
+
+            AsyncTask.execute(() -> {
+                AdhellAppIntegrity adhellAppIntegrity = new AdhellAppIntegrity();
+                adhellAppIntegrity.checkDefaultPolicyExists();
+                adhellAppIntegrity.checkAdhellStandardPackage();
+                adhellAppIntegrity.fillPackageDb();
+            });
         } else {
             if (!deviceAdminInteractor.isActiveAdmin()) {
                 activateKnoxButton.setText("Activate License");
