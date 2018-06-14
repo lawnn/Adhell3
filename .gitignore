@@ -13,3 +13,5 @@ app/release
 /app/libs/edm.jar
 /app/libs/license.jar
 /app/libs/rc.jar
+merge.sh
+*~
