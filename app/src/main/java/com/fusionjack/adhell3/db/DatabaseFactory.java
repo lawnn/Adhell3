@@ -1,5 +1,6 @@
 package com.fusionjack.adhell3.db;
 
+import android.content.SharedPreferences;
 import android.os.Environment;
 import android.util.JsonReader;
 import android.util.JsonWriter;
@@ -7,6 +8,7 @@ import android.util.JsonWriter;
 import com.fusionjack.adhell3.db.entity.AppInfo;
 import com.fusionjack.adhell3.db.entity.AppPermission;
 import com.fusionjack.adhell3.db.entity.BlockUrlProvider;
+import com.fusionjack.adhell3.db.entity.DnsPackage;
 import com.fusionjack.adhell3.db.entity.DisabledPackage;
 import com.fusionjack.adhell3.db.entity.FirewallWhitelistedPackage;
 import com.fusionjack.adhell3.db.entity.RestrictedPackage;
@@ -56,10 +58,11 @@ public final class DatabaseFactory {
             writeWhitelistedPackages(writer, appDatabase);
             writeDisabledPackages(writer, appDatabase);
             writeRestrictedPackages(writer, appDatabase);
-            writeAppPermissions(writer, appDatabase);
+            writeAppComponent(writer, appDatabase);
             writeBlockUrlProviders(writer, appDatabase);
             writeUserBlockUrls(writer, appDatabase);
             writeWhiteUrls(writer, appDatabase);
+            writeCustomDNS(writer, appDatabase);
             writer.endObject();
         } catch (Exception e) {
             e.printStackTrace();
@@ -81,10 +84,8 @@ public final class DatabaseFactory {
         try {
             DeviceAdminInteractor.getInstance().getContentBlocker().disableDomainRules();
             DeviceAdminInteractor.getInstance().getContentBlocker().disableFirewallRules();
-            AdhellAppIntegrity appIntegrity = new AdhellAppIntegrity();
+            AdhellAppIntegrity appIntegrity = AdhellAppIntegrity.getInstance();
             appIntegrity.checkDefaultPolicyExists();
-
-            appDatabase.applicationInfoDao().deleteAll();
             appIntegrity.fillPackageDb();
 
             try (JsonReader reader = new JsonReader(new InputStreamReader(new FileInputStream(backupFile), "UTF-8"))) {
@@ -98,13 +99,17 @@ public final class DatabaseFactory {
                     } else if (name.equalsIgnoreCase("RestrictedPackage")) {
                         readRestrictedPackages(reader);
                     } else if (name.equalsIgnoreCase("AppPermission")) {
-                        readAppPermissions(reader);
+                        readAppComponent(reader);
                     } else if (name.equalsIgnoreCase("BlockUrlProvider")) {
                         readBlockUrlProviders(reader);
                     } else if (name.equalsIgnoreCase("UserBlockUrl")) {
                         readUserBlockUrls(reader);
                     } else if (name.equalsIgnoreCase("WhiteUrl")) {
                         readWhiteUrls(reader);
+                    } else if (name.equalsIgnoreCase("DnsPackage")) {
+                        readDnsPackages(reader);
+                    } else if (name.equalsIgnoreCase("DnsAddresses")) {
+                        readDnsAddresses(reader);
                     }
                 }
                 reader.endObject();
@@ -174,7 +179,7 @@ public final class DatabaseFactory {
         writer.endArray();
     }
 
-    private void writeAppPermissions(JsonWriter writer, AppDatabase appDatabase) throws IOException {
+    private void writeAppComponent(JsonWriter writer, AppDatabase appDatabase) throws IOException {
         writer.name("AppPermission");
         writer.beginArray();
         List<AppPermission> appPermissions = appDatabase.appPermissionDao().getAll();
@@ -230,6 +235,29 @@ public final class DatabaseFactory {
             writer.endObject();
         }
         writer.endArray();
+    }
+
+    private void writeCustomDNS(JsonWriter writer, AppDatabase appDatabase) throws IOException {
+        writer.name("DnsPackage");
+        writer.beginArray();
+        List<DnsPackage> dnsPackages = appDatabase.dnsPackageDao().getAll();
+        for (DnsPackage dnsPackage : dnsPackages) {
+            writer.beginObject();
+            writer.name("packageName").value(dnsPackage.packageName);
+            writer.name("policyPackageId").value(dnsPackage.policyPackageId == null ?
+                    AdhellAppIntegrity.DEFAULT_POLICY_ID : dnsPackage.policyPackageId);
+            writer.endObject();
+        }
+        writer.endArray();
+
+        writer.name("DNSAddresses");
+        writer.beginObject();
+        if (AdhellFactory.getInstance().isDnsNotEmpty()) {
+            SharedPreferences sharedPreferences = AdhellFactory.getInstance().getSharedPreferences();
+            writer.name("dns1").value(sharedPreferences.getString("dns1", "0.0.0.0"));
+            writer.name("dns2").value(sharedPreferences.getString("dns2", "0.0.0.0"));
+        }
+        writer.endObject();
     }
 
     private void readWhitelistedPackages(JsonReader reader) throws IOException {
@@ -354,7 +382,7 @@ public final class DatabaseFactory {
         }
     }
 
-    private void readAppPermissions(JsonReader reader) throws IOException {
+    private void readAppComponent(JsonReader reader) throws IOException {
         String packageName = "";
         String permissionName = "";
         int permissionStatus = -1;
@@ -482,5 +510,62 @@ public final class DatabaseFactory {
 
         appDatabase.whiteUrlDao().deleteAll();
         appDatabase.whiteUrlDao().insertAll(whiteUrls);
+    }
+
+    private void readDnsPackages(JsonReader reader) throws IOException {
+        String packageName = "";
+        String policyPackageId = "";
+        List<DnsPackage> dnsPackages = new ArrayList<>();
+
+        reader.beginArray();
+        while (reader.hasNext()) {
+            reader.beginObject();
+            while (reader.hasNext()) {
+                String name = reader.nextName();
+                if (name.equalsIgnoreCase("packageName")) {
+                    packageName = reader.nextString();
+                } else if (name.equalsIgnoreCase("policyPackageId")) {
+                    policyPackageId = reader.nextString();
+                }
+            }
+            reader.endObject();
+
+            DnsPackage dnsPackage = new DnsPackage();
+            dnsPackage.packageName = packageName;
+            dnsPackage.policyPackageId = policyPackageId;
+            dnsPackages.add(dnsPackage);
+        }
+        reader.endArray();
+
+        appDatabase.dnsPackageDao().deleteAll();
+        appDatabase.dnsPackageDao().insertAll(dnsPackages);
+
+        for (DnsPackage dnsPackage : dnsPackages) {
+            AppInfo appInfo = appDatabase.applicationInfoDao().getAppByPackageName(dnsPackage.packageName);
+            if (appInfo != null) {
+                appInfo.hasCustomDns = true;
+                appDatabase.applicationInfoDao().update(appInfo);
+            }
+        }
+    }
+
+    private void readDnsAddresses(JsonReader reader) throws IOException {
+        String dns1 = "";
+        String dns2 = "";
+
+        reader.beginObject();
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            if (name.equalsIgnoreCase("dns1")) {
+                dns1 = reader.nextString();
+            } else if (name.equalsIgnoreCase("dns2")) {
+                dns2 = reader.nextString();
+            }
+        }
+        reader.endObject();
+
+        if (!dns1.isEmpty() && !dns2.isEmpty()) {
+            AdhellFactory.getInstance().setDns(dns1, dns2, null);
+        }
     }
 }

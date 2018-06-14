@@ -44,8 +44,6 @@
         Edit DNS only if you know the issues it can cause.
         \nToggle Domain rules to apply changes.
     </string>
-    <string name="restore_defaults">Restore Defaults</string>
-    <string name="zero_dns" translatable="false">0.0.0.0</string>
     <string name="blacklist_info">
         Blacklist domains or define firewall denial rules.
         \nToggle Domain rules to apply domain changes.
@@ -71,13 +69,19 @@
         Remote: https://adaway.org/hosts.txt
         \nInternal: file:///mnt/sdcard/hosts.txt
     </string>
-    <string name="dialog_enable_permissions_title">Enable All Permissions</string>
-    <string name="dialog_enable_permissions_info">
-        Do you really want to enable all apps\' permissions?
+    <string name="dialog_enable_components_title">Enable All Components</string>
+    <string name="dialog_enable_components_info">
+        This will enable all apps\' permissions, services and receivers.
+        \nSamsung Knox doesn\'t have an API to clear disabled components.
+        \nTherefore, if they are still disabled after this operation, you need to uninstall Adhell to enable them.
+        \n\nDo you really want to enable all apps\' components?
     </string>
-    <string name="dialog_update_providers_title">Update Providers</string>
+    <string name="dialog_toggle_title">Enable/Disable All Apps</string>
+    <string name="dialog_toggle_info">
+        Do you really want to enable/disable all apps?
+    </string>
     <string name="dialog_add_to_whitelist_question">Add the selected domain to your whitelist?</string>
-    <string name="blocker_fragment_title" translatable="false">Adhell 3</string>
+    <string name="home_bottombar_title" translatable="false">Home</string>
     <string name="package_disabler_fragment_title">Disable Apps</string>
     <string name="apps_management_bottombar_title">Apps</string>
     <string name="domains_bottombar_title">Domains</string>
@@ -94,7 +98,7 @@
     <string name="your_device_running_old_knox_version">
         Your device\'s Knox version is old, so this function may be unstable.
     </string>
-    <string name="others_tab_title">Other</string>
+    <string name="others_bottombar_title">Other</string>
     <string name="mobile_restricter_fragment_title">Mobile Data</string>
     <string name="wifi_restricter_fragment_title">Wi-Fi Data</string>
     <string name="enabled_all_apps">Enabling all apps…</string>
@@ -113,12 +117,27 @@
     </string>
     <string name="whitelisted_app_info">
         Whitelist an app to bypass the firewall.
-        \nToggle Firewall rules to apply changes.
+        \nToggle Domain rules to apply changes.
+    </string>
+    <string name="app_component_info">
+        Disable app components (permissions, services and receivers).
+        \nChanges take effect immediately.
     </string>
     <string name="app_permission_info">
-        Apps usually can\'t handle missing permissions.
-        \nRemoving a permission may crash some apps.
-        \nChanges take effect immediately.
+        Apps usually don\'t handle missing permissions.
+        \nRemoving a permission may crash the app.
+    </string>
+    <string name="app_service_info">
+        Disabling a service may crash the app.
+        \nOnce the service is disabled, it will be removed from the app.
+        \nSamsung Knox doesn\'t have an API to list disabled services.
+        \nTherefore, if the disabled services don\'t appear below, you need to reinstall the app.
+    </string>
+    <string name="app_receiver_info">
+        Disabling a receiver may crash the app.
+        \nOnce the receiver is disabled, it will be removed from the app.
+        \nSamsung Knox doesn\'t have an API to list disabled receivers.
+        \nTherefore, if the disabled receivers don\'t appear below, you need to reinstall the app.
     </string>
     <string name="backup_database">Backup Database</string>
     <string name="restore_database">Restore Database</string>
@@ -127,7 +146,7 @@
     <string name="whitelist_url_fragment_title">Whitelist</string>
     <string name="provider_url_fragment_title">Providers</string>
     <string name="list_url_fragment_title">List</string>
-    <string name="permissions_fragment_title">App Permissions</string>
+    <string name="app_component_fragment_title">App Component</string>
     <string name="dns_fragment_title">DNS</string>
     <string name="settings_fragment_title">Settings</string>
     <string name="enable_apps_dialog_title">Enable All Apps</string>
@@ -139,4 +158,12 @@
     <string name="not_supported_dialog_title">App Not Supported</string>
     <string name="no_internet_connection_dialog_title">No Internet Connection</string>
     <string name="version">Version %1$s</string>
+    <string name="permission_fragment_title">Permissions</string>
+    <string name="service_fragment_title">Services</string>
+    <string name="receiver_fragment_title">Receivers</string>
+    <string name="dialog_set_dns_title">Set DNS</string>
+    <string name="dialog_set_dns_info">
+        Set primary and secondary DNS.
+        \nLeave it empty to restore to default.
+    </string>
 </resources>

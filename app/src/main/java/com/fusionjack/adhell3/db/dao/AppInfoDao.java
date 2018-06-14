@@ -31,6 +31,11 @@ public interface AppInfoDao {
     void update(AppInfo appInfo);
 
 
+    // Get app size
+    @Query("SELECT COUNT(*) FROM AppInfo")
+    int getAppSize();
+
+
     // Get based on appName/packageName
     @Query("SELECT * FROM AppInfo ORDER BY appName ASC")
     List<AppInfo> getAppsAlphabetically();
@@ -103,6 +108,9 @@ public interface AppInfoDao {
     @Query("SELECT * FROM AppInfo WHERE system = 0 AND disabled = 0 ORDER BY appName ASC")
     List<AppInfo> getUserApps();
 
+    @Query("SELECT * FROM AppInfo WHERE (appName LIKE :str OR packageName LIKE :str) AND system = 0 AND disabled = 0 ORDER BY appName ASC")
+    List<AppInfo> getUserApps(String str);
+
 
     // Enabled apps
     @Query("SELECT * FROM AppInfo WHERE disabled = 0 ORDER BY appName ASC")
@@ -116,4 +124,18 @@ public interface AppInfoDao {
 
     @Query("SELECT * FROM AppInfo WHERE (appName LIKE :str OR packageName LIKE :str) AND disabled = 0 ORDER BY installTime DESC")
     List<AppInfo> getEnabledAppsInTimeOrder(String str);
+
+
+    // DNS apps
+    @Query("SELECT * FROM AppInfo WHERE hasCustomDns = 1 ORDER BY appName ASC")
+    List<AppInfo> getDnsApps();
+
+    @Query("SELECT * FROM AppInfo WHERE system = 0 AND disabled = 0 ORDER BY hasCustomDns DESC, appName ASC")
+    List<AppInfo> getAppsInDnsOrder();
+
+    @Query("SELECT * FROM AppInfo WHERE (appName LIKE :str OR packageName LIKE :str) AND system = 0 AND disabled = 0 ORDER BY hasCustomDns DESC, appName ASC")
+    List<AppInfo> getAppsInDnsOrder(String str);
+
+    @Query("SELECT * FROM AppInfo WHERE adhellWhitelisted = 1 OR disabled = 1 OR mobileRestricted = 1 OR wifiRestricted = 1 OR hasCustomDns = 1")
+    List<AppInfo> getModifiedApps();
 }

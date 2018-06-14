@@ -3,7 +3,6 @@ package com.fusionjack.adhell3.utils;
 import android.app.enterprise.AppPermissionControlInfo;
 import android.app.enterprise.ApplicationPermissionControlPolicy;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.util.Log;
 
 import com.fusionjack.adhell3.db.AppDatabase;
@@ -36,14 +35,21 @@ public class AdhellAppIntegrity {
 
     private AppDatabase appDatabase;
     private SharedPreferences sharedPreferences;
-    private PackageManager packageManager;
     private ApplicationPermissionControlPolicy appPermissionControlPolicy;
 
-    public AdhellAppIntegrity() {
+    private static AdhellAppIntegrity instance;
+
+    private AdhellAppIntegrity() {
         this.appDatabase = AdhellFactory.getInstance().getAppDatabase();
-        this.packageManager = AdhellFactory.getInstance().getPackageManager();
         this.sharedPreferences = AdhellFactory.getInstance().getSharedPreferences();
         this.appPermissionControlPolicy = AdhellFactory.getInstance().getAppControlPolicy();
+    }
+
+    public static AdhellAppIntegrity getInstance() {
+        if (instance == null) {
+            instance = new AdhellAppIntegrity();
+        }
+        return instance;
     }
 
     public void check() {
@@ -175,7 +181,7 @@ public class AdhellAppIntegrity {
                 AppPermission appPermission = new AppPermission();
                 appPermission.packageName = packageName;
                 appPermission.permissionName = permissionName;
-                appPermission.permissionStatus = AppPermission.STATUS_DISALLOW;
+                appPermission.permissionStatus = AppPermission.STATUS_PERMISSION;
                 appPermissions.add(appPermission);
             }
         }
@@ -226,9 +232,9 @@ public class AdhellAppIntegrity {
     }
 
     public void fillPackageDb() {
-        if (appDatabase.applicationInfoDao().getAppsAlphabetically().size() > 0) {
+        if (appDatabase.applicationInfoDao().getAppSize() > 0) {
             return;
         }
-        AppsListDBInitializer.getInstance().fillPackageDb(packageManager);
+        AppCache.reload(null, null);
     }
 }

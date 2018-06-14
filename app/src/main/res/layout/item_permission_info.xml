@@ -9,6 +9,10 @@
         android:id="@+id/permissionNameTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
+        android:layout_toStartOf="@id/switchDisable"
+        android:layout_toLeftOf="@id/switchDisable"
         android:padding="5dp"
         android:text="android.permission.INTERNET"
         android:textStyle="bold"/>
@@ -17,7 +21,11 @@
         android:id="@+id/protectionLevelTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
         android:layout_below="@id/permissionNameTextView"
+        android:layout_toStartOf="@id/switchDisable"
+        android:layout_toLeftOf="@id/switchDisable"
         android:paddingStart="5dp"
         android:paddingLeft="5dp"
         android:paddingEnd="5dp"
@@ -30,7 +38,11 @@
         android:id="@+id/permissionLabelTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
         android:layout_below="@id/protectionLevelTextView"
+        android:layout_toStartOf="@id/switchDisable"
+        android:layout_toLeftOf="@id/switchDisable"
         android:paddingStart="5dp"
         android:paddingLeft="5dp"
         android:paddingEnd="5dp"
@@ -38,5 +50,17 @@
         android:paddingBottom="5dp"
         android:text="Internet"
         android:textSize="@dimen/text_mizerable_size"/>
+
+    <Switch
+        android:id="@+id/switchDisable"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:layout_margin="5dp"
+        android:clickable="false"
+        android:focusable="false"
+        android:focusableInTouchMode="false" />
 
 </RelativeLayout>
