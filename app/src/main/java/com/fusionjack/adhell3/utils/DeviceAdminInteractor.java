@@ -2,9 +2,6 @@ package com.fusionjack.adhell3.utils;
 
 import android.app.Activity;
 import android.app.admin.DevicePolicyManager;
-import android.app.enterprise.ApplicationPolicy;
-import android.app.enterprise.EnterpriseDeviceManager;
-import android.app.enterprise.license.EnterpriseLicenseManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -16,13 +13,19 @@ import android.util.Log;
 
 import com.fusionjack.adhell3.App;
 import com.fusionjack.adhell3.blocker.ContentBlocker;
-import com.fusionjack.adhell3.blocker.ContentBlocker20;
-import com.fusionjack.adhell3.blocker.ContentBlocker56;
 import com.fusionjack.adhell3.blocker.ContentBlocker57;
+import com.samsung.android.knox.EnterpriseDeviceManager;
+import com.samsung.android.knox.application.ApplicationPolicy;
+import com.samsung.android.knox.license.KnoxEnterpriseLicenseManager;
 
 import java.io.File;
 
 import javax.inject.Inject;
+
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_8;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_9;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_3_0;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_3_1;
 
 public class DeviceAdminInteractor {
     private static final int RESULT_ENABLE = 42;
@@ -33,7 +36,7 @@ public class DeviceAdminInteractor {
 
     @Nullable
     @Inject
-    EnterpriseLicenseManager enterpriseLicenseManager;
+    KnoxEnterpriseLicenseManager knoxEnterpriseLicenseManager;
 
     @Nullable
     @Inject
@@ -101,8 +104,7 @@ public class DeviceAdminInteractor {
      */
     public void forceActivateKnox(String knoxKey) throws Exception {
         try {
-            EnterpriseLicenseManager.getInstance(mContext)
-                    .activateLicense(knoxKey);
+            KnoxEnterpriseLicenseManager.getInstance(mContext).activateLicense(knoxKey);
         } catch (Exception e) {
             Log.e(TAG, "Failed to activate license", e);
             throw new Exception("Failed to activate license");
@@ -114,9 +116,9 @@ public class DeviceAdminInteractor {
      * Check if KNOX enabled
      */
     public boolean isKnoxEnabled() {
-        return (mContext.checkCallingOrSelfPermission("android.permission.sec.MDM_FIREWALL")
+        return (mContext.checkCallingOrSelfPermission("com.samsung.android.knox.permission.KNOX_FIREWALL")
                 == PackageManager.PERMISSION_GRANTED)
-                && (mContext.checkCallingOrSelfPermission("android.permission.sec.MDM_APP_MGMT")
+                && (mContext.checkCallingOrSelfPermission("com.samsung.android.knox.permission.KNOX_APP_MGMT")
                 == PackageManager.PERMISSION_GRANTED);
     }
 
@@ -154,38 +156,11 @@ public class DeviceAdminInteractor {
     public ContentBlocker getContentBlocker() {
         Log.d(TAG, "Entering contentBlocker() method");
         try {
-            switch (enterpriseDeviceManager.getEnterpriseSdkVer()) {
-                case ENTERPRISE_SDK_VERSION_NONE:
-                    return ContentBlocker57.getInstance();
-                case ENTERPRISE_SDK_VERSION_2:
-                case ENTERPRISE_SDK_VERSION_2_1:
-                case ENTERPRISE_SDK_VERSION_2_2:
-                case ENTERPRISE_SDK_VERSION_3:
-                case ENTERPRISE_SDK_VERSION_4:
-                case ENTERPRISE_SDK_VERSION_4_0_1:
-                case ENTERPRISE_SDK_VERSION_4_1:
-                case ENTERPRISE_SDK_VERSION_5:
-                case ENTERPRISE_SDK_VERSION_5_1:
-                case ENTERPRISE_SDK_VERSION_5_2:
-                case ENTERPRISE_SDK_VERSION_5_3:
-                case ENTERPRISE_SDK_VERSION_5_4:
-                    ContentBlocker20.getInstance().setUrlBlockLimit(625);
-                    return ContentBlocker20.getInstance();
-                case ENTERPRISE_SDK_VERSION_5_4_1:
-                case ENTERPRISE_SDK_VERSION_5_5:
-                case ENTERPRISE_SDK_VERSION_5_5_1:
-                    ContentBlocker20.getInstance().setUrlBlockLimit(625);
-                    return ContentBlocker20.getInstance();
-                case ENTERPRISE_SDK_VERSION_5_6:
-                    return ContentBlocker56.getInstance();
-                case ENTERPRISE_SDK_VERSION_5_7:
-                    return ContentBlocker57.getInstance();
-                case ENTERPRISE_SDK_VERSION_5_7_1:
-                    return ContentBlocker57.getInstance();
-                case ENTERPRISE_SDK_VERSION_5_8:
-                    return ContentBlocker57.getInstance();
-                case ENTERPRISE_SDK_VERSION_5_9:
-                    return  ContentBlocker57.getInstance();
+            switch (EnterpriseDeviceManager.getAPILevel()) {
+                case KNOX_2_8:
+                case KNOX_2_9:
+                case KNOX_3_0:
+                case KNOX_3_1:
                 default:
                     return ContentBlocker57.getInstance();
             }
@@ -205,37 +180,19 @@ public class DeviceAdminInteractor {
             Log.w(TAG, "Knox not supported since enterpriseDeviceManager = null");
             return false;
         }
-        switch (enterpriseDeviceManager.getEnterpriseSdkVer()) {
-            case ENTERPRISE_SDK_VERSION_NONE:
-                return false;
-            case ENTERPRISE_SDK_VERSION_2:
-            case ENTERPRISE_SDK_VERSION_2_1:
-            case ENTERPRISE_SDK_VERSION_2_2:
-            case ENTERPRISE_SDK_VERSION_3:
-            case ENTERPRISE_SDK_VERSION_4:
-            case ENTERPRISE_SDK_VERSION_4_0_1:
-            case ENTERPRISE_SDK_VERSION_4_1:
-            case ENTERPRISE_SDK_VERSION_5:
-            case ENTERPRISE_SDK_VERSION_5_1:
-            case ENTERPRISE_SDK_VERSION_5_2:
-            case ENTERPRISE_SDK_VERSION_5_3:
-            case ENTERPRISE_SDK_VERSION_5_4:
-            case ENTERPRISE_SDK_VERSION_5_4_1:
-            case ENTERPRISE_SDK_VERSION_5_5:
-            case ENTERPRISE_SDK_VERSION_5_5_1:
-            case ENTERPRISE_SDK_VERSION_5_6:
-            case ENTERPRISE_SDK_VERSION_5_7:
-            case ENTERPRISE_SDK_VERSION_5_7_1:
-            case ENTERPRISE_SDK_VERSION_5_8:
-            case ENTERPRISE_SDK_VERSION_5_9:
+        switch (EnterpriseDeviceManager.getAPILevel()) {
+            case KNOX_2_8:
+            case KNOX_2_9:
+            case KNOX_3_0:
+            case KNOX_3_1:
                 return true;
             default:
-                return true;
+                return false;
         }
     }
 
     public boolean isKnoxSupported() {
-        if (enterpriseLicenseManager == null) {
+        if (knoxEnterpriseLicenseManager == null) {
             Log.w(TAG, "Knox is not supported");
             return false;
         }
@@ -244,33 +201,35 @@ public class DeviceAdminInteractor {
     }
 
     public String getLicenseActivationErrorMessage(int errorCode) {
-        if (errorCode == EnterpriseLicenseManager.ERROR_NULL_PARAMS) {
+        if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NULL_PARAMS) {
             return "Null params";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_UNKNOWN) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_UNKNOWN) {
             return "Unknown";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_INVALID_LICENSE) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_INVALID_LICENSE) {
             return "Invalid license";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_NO_MORE_REGISTRATION) {
-            return "No more registration";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_LICENSE_TERMINATED) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_TERMINATED) {
             return "License terminated";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_INVALID_PACKAGE_NAME) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_EXPIRED) {
+            return "License expired";
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_QUANTITY_EXHAUSTED) {
+            return "License quantity exhausted";
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_INVALID_PACKAGE_NAME) {
             return "Invalid package name";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_NOT_CURRENT_DATE) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NOT_CURRENT_DATE) {
             return "Not current date";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_SIGNATURE_MISMATCH) {
-            return "Signature mismatch";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_VERSION_CODE_MISMATCH) {
-            return "Version code mismatch";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_INTERNAL) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_ACTIVATION_NOT_FOUND) {
+            return "License not found, used for deactivation result";
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_DEACTIVATED) {
+            return "License deactivated";
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_INTERNAL) {
             return "Internal";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_INTERNAL_SERVER) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_INTERNAL_SERVER) {
             return "Internak server";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_NETWORK_DISCONNECTED) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NETWORK_DISCONNECTED) {
             return "Network disconnected";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_NETWORK_GENERAL) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NETWORK_GENERAL) {
             return "Network general";
-        } else if (errorCode == EnterpriseLicenseManager.ERROR_USER_DISAGREES_LICENSE_AGREEMENT) {
+        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_USER_DISAGREES_LICENSE_AGREEMENT) {
             return "User disagrees license agreement";
         } else {
             return "";

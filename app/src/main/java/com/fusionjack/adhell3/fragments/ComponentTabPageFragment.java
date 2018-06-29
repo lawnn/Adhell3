@@ -1,9 +1,6 @@
 package com.fusionjack.adhell3.fragments;
 
 import android.app.Activity;
-import android.app.enterprise.AppPermissionControlInfo;
-import android.app.enterprise.ApplicationPermissionControlPolicy;
-import android.app.enterprise.ApplicationPolicy;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.AsyncTask;
@@ -28,16 +25,14 @@ import com.fusionjack.adhell3.db.AppDatabase;
 import com.fusionjack.adhell3.db.entity.AppPermission;
 import com.fusionjack.adhell3.model.AppComponent;
 import com.fusionjack.adhell3.model.IComponentInfo;
-import com.fusionjack.adhell3.model.PermissionInfo;
 import com.fusionjack.adhell3.model.ReceiverInfo;
 import com.fusionjack.adhell3.model.ServiceInfo;
 import com.fusionjack.adhell3.utils.AdhellAppIntegrity;
 import com.fusionjack.adhell3.utils.AdhellFactory;
+import com.samsung.android.knox.application.ApplicationPolicy;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 public class ComponentTabPageFragment extends Fragment {
 
@@ -149,13 +144,14 @@ public class ComponentTabPageFragment extends Fragment {
             AppDatabase appDatabase = AdhellFactory.getInstance().getAppDatabase();
             ApplicationPolicy appPolicy = AdhellFactory.getInstance().getAppPolicy();
             switch (page) {
+                /* TODO:Permission
                 case PERMISSIONS_PAGE:
                     ApplicationPermissionControlPolicy policy = AdhellFactory.getInstance().getAppControlPolicy();
                     if (policy != null) {
                         policy.clearPackagesFromPermissionBlackList();
                         appDatabase.appPermissionDao().deletePermissions();
                     }
-                    break;
+                    break;*/
                 case SERVICES_PAGE:
                     if (appPolicy != null) {
                         List<IComponentInfo> componentInfos = AppComponent.getServices(packageName);
@@ -214,7 +210,6 @@ public class ComponentTabPageFragment extends Fragment {
         private String packageName;
         private IComponentInfo componentInfo;
         private WeakReference<Context> contextWeakReference;
-        private ApplicationPermissionControlPolicy permissionPolicy;
         private ApplicationPolicy appPolicy;
 
         SetComponentAsyncTask(int page, String packageName, IComponentInfo componentInfo, Context context) {
@@ -222,7 +217,6 @@ public class ComponentTabPageFragment extends Fragment {
             this.packageName = packageName;
             this.componentInfo = componentInfo;
             this.contextWeakReference = new WeakReference<>(context);
-            this.permissionPolicy = AdhellFactory.getInstance().getAppControlPolicy();
             this.appPolicy = AdhellFactory.getInstance().getAppPolicy();
         }
 
@@ -230,6 +224,7 @@ public class ComponentTabPageFragment extends Fragment {
         protected Void doInBackground(Void... voids) {
             AppDatabase appDatabase = AdhellFactory.getInstance().getAppDatabase();
             switch (page) {
+                /* TODO:Permission
                 case PERMISSIONS_PAGE:
                     if (permissionPolicy == null) {
                         return null;
@@ -267,7 +262,7 @@ public class ComponentTabPageFragment extends Fragment {
                             appDatabase.appPermissionDao().delete(packageName, permissionName);
                         }
                     }
-                    break;
+                    break;*/
 
                 case SERVICES_PAGE:
                     if (appPolicy == null) {
@@ -355,6 +350,7 @@ public class ComponentTabPageFragment extends Fragment {
             }
         }
 
+        /* TODO:Permission
         private Set<String> getPermissionBlacklistedPackages(String permissionName) {
             if (permissionPolicy == null) {
                 return null;
@@ -373,7 +369,7 @@ public class ComponentTabPageFragment extends Fragment {
             }
 
             return null;
-        }
+        }*/
 
         private boolean getComponentState(String packageName, String serviceName) {
             ApplicationPolicy appPolicy = AdhellFactory.getInstance().getAppPolicy();

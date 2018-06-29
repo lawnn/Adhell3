@@ -26,10 +26,10 @@
     </string>
     <string name="turn_on_admin">Turn On Admin</string>
     <string name="license_key_info">
-        Adhell utilizes Samsung Knox Standard SDK which requires a developer Enterprise (ELM) license key.
+        Adhell utilizes Samsung Knox SDK which requires a Samsung Knox License (SKL) license key.
         \nA developer license key needs to be renewed every 3 months.
     </string>
-    <string name="license_key">Enterprise (ELM) license key</string>
+    <string name="license_key">Samsung Knox License (SKL) key</string>
     <string name="activate_license">Activate License</string>
     <string name="license_activated">License Activated</string>
     <string name="enable_admin">Enable Admin</string>
