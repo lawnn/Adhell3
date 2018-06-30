@@ -22,7 +22,9 @@ import com.fusionjack.adhell3.db.entity.BlockUrl;
 import com.fusionjack.adhell3.db.entity.BlockUrlProvider;
 import com.fusionjack.adhell3.db.entity.DisabledPackage;
 import com.samsung.android.knox.AppIdentity;
+import com.samsung.android.knox.EnterpriseDeviceManager;
 import com.samsung.android.knox.application.ApplicationPolicy;
+import com.samsung.android.knox.license.KnoxEnterpriseLicenseManager;
 import com.samsung.android.knox.net.firewall.DomainFilterRule;
 import com.samsung.android.knox.net.firewall.Firewall;
 import com.samsung.android.knox.net.firewall.FirewallResponse;
@@ -57,6 +59,10 @@ public final class AdhellFactory {
     @Inject
     SharedPreferences sharedPreferences;
 
+    @Nullable
+    @Inject
+    KnoxEnterpriseLicenseManager knoxEnterpriseLicenseManager;
+
     private AdhellFactory() {
         App.get().getAppComponent().inject(this);
     }
@@ -90,11 +96,12 @@ public final class AdhellFactory {
         return sharedPreferences;
     }
 
-    public AlertDialog createNotSupportedDialog(Context context) {
-        return new AlertDialog.Builder(context)
-                .setIcon(R.drawable.ic_error_black_24dp)
+    public void createNotSupportedDialog(Context context) {
+        String knoxIsSupported = "Knox Enterprise License Manager is " + (knoxEnterpriseLicenseManager == null ? "not available" : "available");
+        String knoxApiLevel = "Knox API Level: " + EnterpriseDeviceManager.getAPILevel();
+        new AlertDialog.Builder(context)
                 .setTitle(context.getString(R.string.not_supported_dialog_title))
-                .setMessage(context.getString(R.string.adhell_not_supported))
+                .setMessage(knoxIsSupported + "\n" + knoxApiLevel)
                 .show();
     }
 
