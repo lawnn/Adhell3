@@ -52,9 +52,16 @@ Ability to disable app's permissions, services and receivers. Only user apps are
 Set custom DNS for selected apps. Only user apps are supported.
 
 ## Prerequisite for building apk
+### Java
+- Install JDK 8 for your platform http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
+- Don't use JDK 9 as there is issue with Gradle. See Issue #78.
+ 
+### Git (Optional, but recommended)
+- Install git for your platform: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
+
 ### Source code
-- Clone the project with `git clone git@gitlab.com:fusionjack/adhell3.git adhell3` OR
-- Download the source code as a zip file: https://gitlab.com/fusionjack/adhell3/repository/master/archive.zip
+- Using git: Clone the project with `git clone https://gitlab.com/fusionjack/adhell3.git`
+- Without git: Download the source code as a zip file: https://gitlab.com/fusionjack/adhell3/repository/master/archive.zip
 - Set `applicationId` with a valid package name in `app\build.gradle`, e.g.: com.dhf.erz58384
 
 ### Android Studio
@@ -68,11 +75,24 @@ Set custom DNS for selected apps. Only user apps are supported.
 - Take the `libs` content and put it to `app\libs` folder in the project 
 
 ## How to build apk
-- Update the source code with `git stash && git pull --rebase && git stash pop` or re-download the source code as a zip file
-- Run these following commands in a console: <br/>
+
+### With Git
+Plug in your device and run this following commands in a bash console:<br/>
+1. `cd adhell3`<br/>
+2. `git stash && git pull --rebase && git stash pop`<br/>
+3. `bash gradlew clean installDebug`
+
+Explanation:
+1. Enter adhell3 folder
+2. It stores your changes, e.g package name, updates the source code and re-apply your changes
+3. Build and install apk on the device
+
+### Without Git
+1. Re-download the source code as a zip file and re-applies your changes manually<br/>
+2. Plug in your device and run this following commands in Windows console:<br/>
 `cd adhell3`<br/>
-`gradlew clean assembleDebug`
-- The generated apk is located in `app\build\outputs\apk\debug`
+`gradlew clean installDebug`
+
 
 ## Prerequisite for using Adhell3
 You need an Enterprise License Key (ELM) in order to use Adhell3. <br/>
@@ -86,6 +106,6 @@ As for developer, the license needs to be renewed every 3 months. Don't forget t
 
 
 ## Credits
-Adhell3 is based on FiendFyre's Adhell2 which is heavily modified by me.<br/>
-### Icons
-https://material.io/icons
+* Adhell3 is based on FiendFyre's Adhell2 which is heavily modified by me.<br/>
+* Big thanks to @mmotti who provides a host file for Adhell3. You can visit his Github here: https://github.com/mmotti/mmotti-host-file
+* Adhell3 is using icons from https://material.io/icons

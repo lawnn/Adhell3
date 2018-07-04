@@ -1,7 +1,5 @@
 package com.fusionjack.adhell3.adapter;
 
-import android.app.enterprise.AppPermissionControlInfo;
-import android.app.enterprise.ApplicationPermissionControlPolicy;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -14,10 +12,8 @@ import android.widget.TextView;
 import com.fusionjack.adhell3.R;
 import com.fusionjack.adhell3.model.IComponentInfo;
 import com.fusionjack.adhell3.model.PermissionInfo;
-import com.fusionjack.adhell3.utils.AdhellFactory;
 
 import java.util.List;
-import java.util.Set;
 
 public class PermissionInfoAdapter extends ComponentAdapter {
 
@@ -47,17 +43,19 @@ public class PermissionInfoAdapter extends ComponentAdapter {
             permissionNameTextView.setText(permissionInfo.name);
             protectionLevelTextView.setText(permissionInfo.getProtectionLevelLabel());
 
-            boolean checked = false;
+            boolean checked = true;
+            /* TODO:Permission
             Set<String> blacklistedPackageNames = getPermissionBlacklistedPackages(permissionInfo.name);
             if (blacklistedPackageNames == null || !blacklistedPackageNames.contains(permissionInfo.getPackageName())) {
                 checked = true;
-            }
+            }*/
             permissionSwitch.setChecked(checked);
         }
 
         return convertView;
     }
 
+    /* TODO:Permission
     private Set<String> getPermissionBlacklistedPackages(String permissionName) {
         ApplicationPermissionControlPolicy permissionPolicy = AdhellFactory.getInstance().getAppControlPolicy();
         if (permissionPolicy == null) {
@@ -77,5 +75,5 @@ public class PermissionInfoAdapter extends ComponentAdapter {
         }
 
         return null;
-    }
+    }*/
 }

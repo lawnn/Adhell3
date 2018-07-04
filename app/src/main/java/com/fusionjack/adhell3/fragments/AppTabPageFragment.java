@@ -1,6 +1,5 @@
 package com.fusionjack.adhell3.fragments;
 
-import android.app.enterprise.ApplicationPolicy;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -30,6 +29,8 @@ import com.fusionjack.adhell3.tasks.RefreshAppAsyncTask;
 import com.fusionjack.adhell3.tasks.SetAppAsyncTask;
 import com.fusionjack.adhell3.utils.AdhellFactory;
 import com.fusionjack.adhell3.utils.AppCache;
+import com.fusionjack.adhell3.utils.AppPreferences;
+import com.samsung.android.knox.application.ApplicationPolicy;
 
 import java.util.List;
 
@@ -173,7 +174,7 @@ public class AppTabPageFragment extends Fragment {
                             List<AppInfo> disabledAppList = appDatabase.applicationInfoDao().getDisabledApps();
                             for (AppInfo app : disabledAppList) {
                                 app.disabled = false;
-                                if (appPolicy != null) {
+                                if (appPolicy != null && AppPreferences.getInstance().isAppDisablerEnabled()) {
                                     appPolicy.setEnableApplication(app.packageName);
                                 }
                                 appDatabase.applicationInfoDao().update(app);

@@ -1,8 +1,5 @@
 package com.fusionjack.adhell3.utils;
 
-import android.app.enterprise.ApplicationPermissionControlPolicy;
-import android.app.enterprise.ApplicationPolicy;
-import android.app.enterprise.FirewallPolicy;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -23,11 +20,15 @@ import com.fusionjack.adhell3.db.entity.AppInfo;
 import com.fusionjack.adhell3.db.entity.AppPermission;
 import com.fusionjack.adhell3.db.entity.BlockUrl;
 import com.fusionjack.adhell3.db.entity.BlockUrlProvider;
-import com.sec.enterprise.AppIdentity;
-import com.sec.enterprise.firewall.DomainFilterRule;
-import com.sec.enterprise.firewall.Firewall;
-import com.sec.enterprise.firewall.FirewallResponse;
-import com.sec.enterprise.firewall.FirewallRule;
+import com.fusionjack.adhell3.db.entity.DisabledPackage;
+import com.samsung.android.knox.AppIdentity;
+import com.samsung.android.knox.EnterpriseDeviceManager;
+import com.samsung.android.knox.application.ApplicationPolicy;
+import com.samsung.android.knox.license.KnoxEnterpriseLicenseManager;
+import com.samsung.android.knox.net.firewall.DomainFilterRule;
+import com.samsung.android.knox.net.firewall.Firewall;
+import com.samsung.android.knox.net.firewall.FirewallResponse;
+import com.samsung.android.knox.net.firewall.FirewallRule;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -47,15 +48,7 @@ public final class AdhellFactory {
 
     @Nullable
     @Inject
-    ApplicationPermissionControlPolicy appControlPolicy;
-
-    @Nullable
-    @Inject
     Firewall firewall;
-
-    @Nullable
-    @Inject
-    FirewallPolicy firewallPolicy;
 
     @Inject
     AppDatabase appDatabase;
@@ -65,6 +58,10 @@ public final class AdhellFactory {
 
     @Inject
     SharedPreferences sharedPreferences;
+
+    @Nullable
+    @Inject
+    KnoxEnterpriseLicenseManager knoxEnterpriseLicenseManager;
 
     private AdhellFactory() {
         App.get().getAppComponent().inject(this);
@@ -83,18 +80,8 @@ public final class AdhellFactory {
     }
 
     @Nullable
-    public ApplicationPermissionControlPolicy getAppControlPolicy() {
-        return appControlPolicy;
-    }
-
-    @Nullable
     public Firewall getFirewall() {
         return firewall;
-    }
-
-    @Nullable
-    public FirewallPolicy getFirewallPolicy() {
-        return firewallPolicy;
     }
 
     public AppDatabase getAppDatabase() {
@@ -109,11 +96,12 @@ public final class AdhellFactory {
         return sharedPreferences;
     }
 
-    public AlertDialog createNotSupportedDialog(Context context) {
-        return new AlertDialog.Builder(context)
-                .setIcon(R.drawable.ic_error_black_24dp)
+    public void createNotSupportedDialog(Context context) {
+        String knoxIsSupported = "Knox Enterprise License Manager is " + (knoxEnterpriseLicenseManager == null ? "not available" : "available");
+        String knoxApiLevel = "Knox API Level: " + EnterpriseDeviceManager.getAPILevel();
+        new AlertDialog.Builder(context)
                 .setTitle(context.getString(R.string.not_supported_dialog_title))
-                .setMessage(context.getString(R.string.adhell_not_supported))
+                .setMessage(knoxIsSupported + "\n" + knoxApiLevel)
                 .show();
     }
 
@@ -131,7 +119,6 @@ public final class AdhellFactory {
         }
 
         try {
-            LogUtils.getInstance().writeInfo("Adding rule(s) to Knox Firewall...", handler);
             FirewallResponse[] response = firewall.addDomainFilterRules(domainRules);
             handleResponse(response, handler);
         } catch (SecurityException ex) {
@@ -146,7 +133,6 @@ public final class AdhellFactory {
         }
 
         try {
-            LogUtils.getInstance().writeInfo("Adding rule(s) to Knox Firewall...", handler);
             FirewallResponse[] response = firewall.addRules(firewallRules);
             handleResponse(response, handler);
         } catch (SecurityException ex) {
@@ -161,7 +147,7 @@ public final class AdhellFactory {
             LogUtils.getInstance().writeError("There was no response from Knox Firewall", ex, handler);
             throw ex;
         } else {
-            LogUtils.getInstance().writeInfo("Result: " + response[0].getMessage(), handler);
+            LogUtils.getInstance().writeInfo("Result: Success", handler);
             if (FirewallResponse.Result.SUCCESS != response[0].getResult()) {
                 Exception ex = new Exception(response[0].getMessage());
                 StringWriter sw = new StringWriter();
@@ -174,22 +160,23 @@ public final class AdhellFactory {
     }
 
     public void setAppComponentState(boolean state) {
-        if (appControlPolicy == null && appPolicy == null) {
+        if (appPolicy == null) {
             return;
         }
 
         List<AppPermission> appPermissions = appDatabase.appPermissionDao().getAll();
         for (AppPermission appPermission : appPermissions) {
-            List<String> packageList = new ArrayList<>();
-            packageList.add(appPermission.packageName);
             switch (appPermission.permissionStatus) {
+                /* TODO:Permission
                 case AppPermission.STATUS_PERMISSION:
+                    List<String> packageList = new ArrayList<>();
+                    packageList.add(appPermission.packageName);
                     if (state) {
                         appControlPolicy.removePackagesFromPermissionBlackList(appPermission.permissionName, packageList);
                     } else {
                         appControlPolicy.addPackagesToPermissionBlackList(appPermission.permissionName, packageList);
                     }
-                    break;
+                    break;*/
                 case AppPermission.STATUS_SERVICE:
                     ComponentName componentName = new ComponentName(appPermission.packageName, appPermission.permissionName);
                     appPolicy.setApplicationComponentState(componentName, state);
@@ -212,16 +199,9 @@ public final class AdhellFactory {
         return contentBlocker instanceof ContentBlocker56 || contentBlocker instanceof ContentBlocker57;
     }
 
-    public boolean isDnsNotEmpty() {
-        return sharedPreferences.contains("dns1") && sharedPreferences.contains("dns2");
-    }
-
     public void setDns(String primaryDns, String secondaryDns, Handler handler) {
         if (primaryDns.isEmpty() && secondaryDns.isEmpty()) {
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.remove("dns1");
-            editor.remove("dns2");
-            editor.apply();
+            AppPreferences.getInstance().removeDns();
             if (handler != null) {
                 Message message = handler.obtainMessage(0, R.string.restored_dns);
                 message.sendToTarget();
@@ -232,10 +212,7 @@ public final class AdhellFactory {
                 message.sendToTarget();
             }
         } else {
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.putString("dns1", primaryDns);
-            editor.putString("dns2", secondaryDns);
-            editor.apply();
+            AppPreferences.getInstance().setDns(primaryDns, secondaryDns);
             if (handler != null) {
                 Message message = handler.obtainMessage(0, R.string.changed_dns);
                 message.sendToTarget();
@@ -244,17 +221,19 @@ public final class AdhellFactory {
     }
 
     public void applyDns(Handler handler) {
-        if (isDnsNotEmpty()) {
-            String dns1 = sharedPreferences.getString("dns1", "0.0.0.0");
-            String dns2 = sharedPreferences.getString("dns2", "0.0.0.0");
+        if (AppPreferences.getInstance().isDnsNotEmpty()) {
+            String dns1 = AppPreferences.getInstance().getDns1();
+            String dns2 = AppPreferences.getInstance().getDns2();
             if (Patterns.IP_ADDRESS.matcher(dns1).matches() && Patterns.IP_ADDRESS.matcher(dns2).matches()) {
                 LogUtils.getInstance().writeInfo("\nProcessing DNS...", handler);
 
+                LogUtils.getInstance().writeInfo("DNS 1: " + dns1, handler);
+                LogUtils.getInstance().writeInfo("DNS 2: " + dns2, handler);
                 List<AppInfo> dnsPackages = AdhellFactory.getInstance().getAppDatabase().applicationInfoDao().getDnsApps();
                 if (dnsPackages.size() == 0) {
                     LogUtils.getInstance().writeInfo("No app is selected", handler);
                 } else {
-                    LogUtils.getInstance().writeInfo("DNS app size: " + dnsPackages.size(), handler);
+                    LogUtils.getInstance().writeInfo("Size: " + dnsPackages.size(), handler);
                     List<DomainFilterRule> rules = new ArrayList<>();
                     for (AppInfo app : dnsPackages) {
                         DomainFilterRule rule = new DomainFilterRule(new AppIdentity(app.packageName, null));
@@ -269,6 +248,24 @@ public final class AdhellFactory {
                         e.printStackTrace();
                     }
                 }
+            }
+        }
+    }
+
+    public void applyAppDisabler() {
+        ApplicationPolicy appPolicy = AdhellFactory.getInstance().getAppPolicy();
+        if (appPolicy == null) {
+            return;
+        }
+
+        boolean enabled = AppPreferences.getInstance().isAppDisablerEnabled();
+        AppDatabase appDatabase = AdhellFactory.getInstance().getAppDatabase();
+        List<DisabledPackage> disabledPackages = appDatabase.disabledPackageDao().getAll();
+        for (DisabledPackage disabledPackage : disabledPackages) {
+            if (enabled) {
+                appPolicy.setDisableApplication(disabledPackage.packageName);
+            } else {
+                appPolicy.setEnableApplication(disabledPackage.packageName);
             }
         }
     }

@@ -1,6 +1,5 @@
 package com.fusionjack.adhell3.db;
 
-import android.content.SharedPreferences;
 import android.os.Environment;
 import android.util.JsonReader;
 import android.util.JsonWriter;
@@ -8,24 +7,22 @@ import android.util.JsonWriter;
 import com.fusionjack.adhell3.db.entity.AppInfo;
 import com.fusionjack.adhell3.db.entity.AppPermission;
 import com.fusionjack.adhell3.db.entity.BlockUrlProvider;
-import com.fusionjack.adhell3.db.entity.DnsPackage;
 import com.fusionjack.adhell3.db.entity.DisabledPackage;
+import com.fusionjack.adhell3.db.entity.DnsPackage;
 import com.fusionjack.adhell3.db.entity.FirewallWhitelistedPackage;
 import com.fusionjack.adhell3.db.entity.RestrictedPackage;
 import com.fusionjack.adhell3.db.entity.UserBlockUrl;
 import com.fusionjack.adhell3.db.entity.WhiteUrl;
 import com.fusionjack.adhell3.utils.AdhellAppIntegrity;
 import com.fusionjack.adhell3.utils.AdhellFactory;
-import com.fusionjack.adhell3.utils.DeviceAdminInteractor;
+import com.fusionjack.adhell3.utils.AppPreferences;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Date;
@@ -76,14 +73,7 @@ public final class DatabaseFactory {
             throw new FileNotFoundException("Backup file " + BACKUP_FILENAME + " cannot be found");
         }
 
-        File dbFolder = new File(Environment.getExternalStorageDirectory(), AppDatabase.DATABASE_FOLDER);
-        File dbFile = new File(dbFolder, AppDatabase.DATABASE_FILE);
-        File backupDbFile = new File(dbFolder, AppDatabase.DATABASE_FILE + ".bak");
-        copy(dbFile, backupDbFile);
-
         try {
-            DeviceAdminInteractor.getInstance().getContentBlocker().disableDomainRules();
-            DeviceAdminInteractor.getInstance().getContentBlocker().disableFirewallRules();
             AdhellAppIntegrity appIntegrity = AdhellAppIntegrity.getInstance();
             appIntegrity.checkDefaultPolicyExists();
             appIntegrity.fillPackageDb();
@@ -116,23 +106,7 @@ public final class DatabaseFactory {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            copy(backupDbFile, dbFile);
-            backupDbFile.delete();
             throw e;
-        }
-
-        backupDbFile.delete();
-    }
-
-    private static void copy(File src, File dst) throws IOException {
-        try (InputStream in = new FileInputStream(src)) {
-            try (OutputStream out = new FileOutputStream(dst)) {
-                byte[] buf = new byte[1024];
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
-                }
-            }
         }
     }
 
@@ -252,10 +226,9 @@ public final class DatabaseFactory {
 
         writer.name("DNSAddresses");
         writer.beginObject();
-        if (AdhellFactory.getInstance().isDnsNotEmpty()) {
-            SharedPreferences sharedPreferences = AdhellFactory.getInstance().getSharedPreferences();
-            writer.name("dns1").value(sharedPreferences.getString("dns1", "0.0.0.0"));
-            writer.name("dns2").value(sharedPreferences.getString("dns2", "0.0.0.0"));
+        if (AppPreferences.getInstance().isDnsNotEmpty()) {
+            writer.name("dns1").value(AppPreferences.getInstance().getDns1());
+            writer.name("dns2").value(AppPreferences.getInstance().getDns2());
         }
         writer.endObject();
     }
@@ -472,9 +445,7 @@ public final class DatabaseFactory {
             }
             reader.endObject();
 
-            UserBlockUrl blockUrl = new UserBlockUrl();
-            blockUrl.url = url;
-            blockUrl.insertedAt = insertedAt;
+            UserBlockUrl blockUrl = new UserBlockUrl(url, insertedAt);
             userBlockUrls.add(blockUrl);
         }
         reader.endArray();
@@ -501,9 +472,7 @@ public final class DatabaseFactory {
             }
             reader.endObject();
 
-            WhiteUrl whiteUrl = new WhiteUrl();
-            whiteUrl.url = url;
-            whiteUrl.insertedAt = insertedAt;
+            WhiteUrl whiteUrl = new WhiteUrl(url, insertedAt);
             whiteUrls.add(whiteUrl);
         }
         reader.endArray();
