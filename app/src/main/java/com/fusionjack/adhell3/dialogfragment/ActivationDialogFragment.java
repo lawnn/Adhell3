@@ -36,7 +36,6 @@ import io.reactivex.schedulers.Schedulers;
 public class ActivationDialogFragment extends DialogFragment {
     private static final String TAG = ActivationDialogFragment.class.getCanonicalName();
     BroadcastReceiver receiver;
-    IntentFilter filter;
     private DeviceAdminInteractor deviceAdminInteractor;
     private Single<String> knoxKeyObservable;
     private Button turnOnAdminButton;
@@ -96,7 +95,7 @@ public class ActivationDialogFragment extends DialogFragment {
                         filter.addAction(KnoxEnterpriseLicenseManager.ACTION_LICENSE_STATUS);
                         getActivity().registerReceiver(receiver, filter);
 
-                        KnoxEnterpriseLicenseManager.getInstance(getContext()).activateLicense(knoxKey);
+                        deviceAdminInteractor.forceActivateKnox(knoxKey, getContext());
                     }
 
                     @Override
@@ -144,27 +143,33 @@ public class ActivationDialogFragment extends DialogFragment {
         super.onResume();
         disposable = new CompositeDisposable();
 
-        if (deviceAdminInteractor.isActiveAdmin()) {
+        boolean adminActive = deviceAdminInteractor.isAdminActive();
+        if (adminActive) {
             allowTurnOnAdmin(false);
             turnOnAdminButton.setText(R.string.admin_enabled);
+            adminActive = true;
         } else {
             allowTurnOnAdmin(true);
             turnOnAdminButton.setText(R.string.enable_admin);
+            adminActive = false;
         }
 
-        if (deviceAdminInteractor.isKnoxEnabled()) {
+        boolean knoxEnabled = deviceAdminInteractor.isKnoxEnabled(getContext());
+        if (knoxEnabled) {
             activateKnoxButton.setText(R.string.license_activated);
             allowActivateKnox(false);
+            knoxEnabled = true;
         } else {
             activateKnoxButton.setText(R.string.activate_license);
-            if (!deviceAdminInteractor.isActiveAdmin()) {
+            if (!adminActive) {
                 allowActivateKnox(false);
             } else {
                 allowActivateKnox(true);
             }
+            knoxEnabled = false;
         }
 
-        if (deviceAdminInteractor.isActiveAdmin() && deviceAdminInteractor.isKnoxEnabled()) {
+        if (adminActive && knoxEnabled) {
             dismiss();
         }
     }

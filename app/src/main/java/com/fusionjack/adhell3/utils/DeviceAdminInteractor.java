@@ -27,10 +27,11 @@ import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODE
 import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_3_0;
 import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_3_1;
 
-public class DeviceAdminInteractor {
+public final class DeviceAdminInteractor {
     private static final int RESULT_ENABLE = 42;
     private static final String TAG = DeviceAdminInteractor.class.getCanonicalName();
-    private static DeviceAdminInteractor mInstance = null;
+
+    private static DeviceAdminInteractor instance;
 
     private final String KNOX_KEY = "knox_key";
 
@@ -48,10 +49,7 @@ public class DeviceAdminInteractor {
 
     @Nullable
     @Inject
-    ApplicationPolicy mApplicationPolicy;
-
-    @Inject
-    Context mContext;
+    ApplicationPolicy applicationPolicy;
 
     @Inject
     ComponentName componentName;
@@ -60,24 +58,11 @@ public class DeviceAdminInteractor {
         App.get().getAppComponent().inject(this);
     }
 
-
     public static DeviceAdminInteractor getInstance() {
-        if (mInstance == null) {
-            mInstance = getSync();
+        if (instance == null) {
+            instance = new DeviceAdminInteractor();
         }
-        return mInstance;
-    }
-
-    private static synchronized DeviceAdminInteractor getSync() {
-        if (mInstance == null) {
-            mInstance = new DeviceAdminInteractor();
-        }
-        return mInstance;
-    }
-
-    public static boolean isSamsung() {
-        Log.i(TAG, "Device manufacturer: " + Build.MANUFACTURER);
-        return Build.MANUFACTURER.equals("samsung");
+        return instance;
     }
 
     /**
@@ -85,7 +70,7 @@ public class DeviceAdminInteractor {
      *
      * @return void
      */
-    public boolean isActiveAdmin() {
+    public boolean isAdminActive() {
         return devicePolicyManager.isAdminActive(componentName);
     }
 
@@ -102,23 +87,17 @@ public class DeviceAdminInteractor {
     /**
      * Force to activate Samsung KNOX Standard SDK
      */
-    public void forceActivateKnox(String knoxKey) throws Exception {
-        try {
-            KnoxEnterpriseLicenseManager.getInstance(mContext).activateLicense(knoxKey);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to activate license", e);
-            throw new Exception("Failed to activate license");
-        }
-
+    public void forceActivateKnox(String knoxKey, Context context) {
+        KnoxEnterpriseLicenseManager.getInstance(context).activateLicense(knoxKey);
     }
 
     /**
      * Check if KNOX enabled
      */
-    public boolean isKnoxEnabled() {
-        return (mContext.checkCallingOrSelfPermission("com.samsung.android.knox.permission.KNOX_FIREWALL")
+    public boolean isKnoxEnabled(Context context) {
+        return (context.checkCallingOrSelfPermission("com.samsung.android.knox.permission.KNOX_FIREWALL")
                 == PackageManager.PERMISSION_GRANTED)
-                && (mContext.checkCallingOrSelfPermission("com.samsung.android.knox.permission.KNOX_APP_MGMT")
+                && (context.checkCallingOrSelfPermission("com.samsung.android.knox.permission.KNOX_APP_MGMT")
                 == PackageManager.PERMISSION_GRANTED);
     }
 
@@ -133,8 +112,8 @@ public class DeviceAdminInteractor {
     }
 
     public boolean installApk(String pathToApk) {
-        if (mApplicationPolicy == null) {
-            Log.i(TAG, "mApplicationPolicy variable is null");
+        if (applicationPolicy == null) {
+            Log.i(TAG, "applicationPolicy variable is null");
             return false;
         }
         try {
@@ -144,7 +123,7 @@ public class DeviceAdminInteractor {
                 return false;
             }
 
-            boolean result = mApplicationPolicy.installApplication(pathToApk, false);
+            boolean result = applicationPolicy.installApplication(pathToApk, false);
             Log.i(TAG, "Is Application installed: " + result);
             return result;
         } catch (Throwable e) {
@@ -154,30 +133,29 @@ public class DeviceAdminInteractor {
     }
 
     public ContentBlocker getContentBlocker() {
-        Log.d(TAG, "Entering contentBlocker() method");
-        try {
-            switch (EnterpriseDeviceManager.getAPILevel()) {
-                case KNOX_2_8:
-                case KNOX_2_9:
-                case KNOX_3_0:
-                case KNOX_3_1:
-                default:
-                    return ContentBlocker57.getInstance();
-            }
-        } catch (Throwable t) {
-            Log.e(TAG, "Failed to getAppsAlphabetically ContentBlocker", t);
-            return null;
+        switch (EnterpriseDeviceManager.getAPILevel()) {
+            case KNOX_2_8:
+            case KNOX_2_9:
+            case KNOX_3_0:
+            case KNOX_3_1:
+                return ContentBlocker57.getInstance();
+            default:
+                return null;
         }
     }
 
-    public boolean isContentBlockerSupported() {
-        return (isSamsung() && isKnoxSupported() && isKnoxVersionSupported());
+    public boolean isSupported() {
+        return isSamsung() && isKnoxSupported() && isKnoxVersionSupported();
+    }
+
+    private boolean isSamsung() {
+        Log.i(TAG, "Device manufacturer: " + Build.MANUFACTURER);
+        return Build.MANUFACTURER.equals("samsung");
     }
 
     private boolean isKnoxVersionSupported() {
-        Log.d(TAG, "Entering isKnoxVersionSupported() method");
         if (enterpriseDeviceManager == null) {
-            Log.w(TAG, "Knox not supported since enterpriseDeviceManager = null");
+            Log.w(TAG, "Knox is not supported: enterpriseDeviceManager is null");
             return false;
         }
         switch (EnterpriseDeviceManager.getAPILevel()) {
@@ -191,48 +169,12 @@ public class DeviceAdminInteractor {
         }
     }
 
-    public boolean isKnoxSupported() {
+    private boolean isKnoxSupported() {
         if (knoxEnterpriseLicenseManager == null) {
-            Log.w(TAG, "Knox is not supported");
+            Log.w(TAG, "Knox is not supported: knoxEnterpriseLicenseManager is null");
             return false;
         }
         Log.i(TAG, "Knox is supported");
         return true;
-    }
-
-    public String getLicenseActivationErrorMessage(int errorCode) {
-        if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NULL_PARAMS) {
-            return "Null params";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_UNKNOWN) {
-            return "Unknown";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_INVALID_LICENSE) {
-            return "Invalid license";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_TERMINATED) {
-            return "License terminated";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_EXPIRED) {
-            return "License expired";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_QUANTITY_EXHAUSTED) {
-            return "License quantity exhausted";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_INVALID_PACKAGE_NAME) {
-            return "Invalid package name";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NOT_CURRENT_DATE) {
-            return "Not current date";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_ACTIVATION_NOT_FOUND) {
-            return "License not found, used for deactivation result";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_LICENSE_DEACTIVATED) {
-            return "License deactivated";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_INTERNAL) {
-            return "Internal";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_INTERNAL_SERVER) {
-            return "Internak server";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NETWORK_DISCONNECTED) {
-            return "Network disconnected";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NETWORK_GENERAL) {
-            return "Network general";
-        } else if (errorCode == KnoxEnterpriseLicenseManager.ERROR_USER_DISAGREES_LICENSE_AGREEMENT) {
-            return "User disagrees license agreement";
-        } else {
-            return "";
-        }
     }
 }
