@@ -13,15 +13,24 @@ import android.util.Log;
 
 import com.fusionjack.adhell3.App;
 import com.fusionjack.adhell3.blocker.ContentBlocker;
+import com.fusionjack.adhell3.blocker.ContentBlocker56;
 import com.fusionjack.adhell3.blocker.ContentBlocker57;
 import com.samsung.android.knox.EnterpriseDeviceManager;
 import com.samsung.android.knox.application.ApplicationPolicy;
+import com.samsung.android.knox.license.EnterpriseLicenseManager;
 import com.samsung.android.knox.license.KnoxEnterpriseLicenseManager;
 
 import java.io.File;
 
 import javax.inject.Inject;
 
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_4;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_4_1;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_5;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_5_1;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_6;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_7;
+import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_7_1;
 import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_8;
 import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_2_9;
 import static com.samsung.android.knox.EnterpriseDeviceManager.KNOX_VERSION_CODES.KNOX_3_0;
@@ -34,10 +43,15 @@ public final class DeviceAdminInteractor {
     private static DeviceAdminInteractor instance;
 
     private final String KNOX_KEY = "knox_key";
+    private final String BACKWARD_KEY = "backward_key";
 
     @Nullable
     @Inject
     KnoxEnterpriseLicenseManager knoxEnterpriseLicenseManager;
+
+    @Nullable
+    @Inject
+    EnterpriseLicenseManager enterpriseLicenseManager;
 
     @Nullable
     @Inject
@@ -87,8 +101,18 @@ public final class DeviceAdminInteractor {
     /**
      * Force to activate Samsung KNOX Standard SDK
      */
-    public void forceActivateKnox(String knoxKey, Context context) {
-        KnoxEnterpriseLicenseManager.getInstance(context).activateLicense(knoxKey);
+    public void activateKnoxKey(SharedPreferences sharedPreferences, Context context) {
+        String knoxKey = getKnoxKey(sharedPreferences);
+        if (knoxKey != null) {
+            KnoxEnterpriseLicenseManager.getInstance(context).activateLicense(knoxKey);
+        }
+    }
+
+    public void activateBackwardKey(SharedPreferences sharedPreferences, Context context) {
+        String backwardKey = getBackwardKey(sharedPreferences);
+        if (backwardKey != null) {
+            EnterpriseLicenseManager.getInstance(context).activateLicense(backwardKey);
+        }
     }
 
     /**
@@ -108,6 +132,16 @@ public final class DeviceAdminInteractor {
     public void setKnoxKey(SharedPreferences sharedPreferences, String key) {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString(KNOX_KEY, key);
+        editor.apply();
+    }
+
+    public String getBackwardKey(SharedPreferences sharedPreferences) {
+        return sharedPreferences.getString(BACKWARD_KEY, null);
+    }
+
+    public void setBackwardKey(SharedPreferences sharedPreferences, String key) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(BACKWARD_KEY, key);
         editor.apply();
     }
 
@@ -134,6 +168,14 @@ public final class DeviceAdminInteractor {
 
     public ContentBlocker getContentBlocker() {
         switch (EnterpriseDeviceManager.getAPILevel()) {
+            case KNOX_2_4:
+            case KNOX_2_4_1:
+            case KNOX_2_5:
+            case KNOX_2_5_1:
+                return ContentBlocker56.getInstance();
+            case KNOX_2_6:
+            case KNOX_2_7:
+            case KNOX_2_7_1:
             case KNOX_2_8:
             case KNOX_2_9:
             case KNOX_3_0:
@@ -159,6 +201,13 @@ public final class DeviceAdminInteractor {
             return false;
         }
         switch (EnterpriseDeviceManager.getAPILevel()) {
+            case KNOX_2_4:
+            case KNOX_2_4_1:
+            case KNOX_2_5:
+            case KNOX_2_5_1:
+            case KNOX_2_6:
+            case KNOX_2_7:
+            case KNOX_2_7_1:
             case KNOX_2_8:
             case KNOX_2_9:
             case KNOX_3_0:
@@ -170,11 +219,23 @@ public final class DeviceAdminInteractor {
     }
 
     private boolean isKnoxSupported() {
-        if (knoxEnterpriseLicenseManager == null) {
-            Log.w(TAG, "Knox is not supported: knoxEnterpriseLicenseManager is null");
+        if (knoxEnterpriseLicenseManager == null || enterpriseLicenseManager == null) {
+            Log.w(TAG, "Knox is not supported: knoxEnterpriseLicenseManager or enterpriseLicenseManager is null");
             return false;
         }
         Log.i(TAG, "Knox is supported");
         return true;
+    }
+
+    public boolean useBackwardCompatibleKey() {
+        switch (EnterpriseDeviceManager.getAPILevel()) {
+            case KNOX_2_8:
+            case KNOX_2_9:
+            case KNOX_3_0:
+            case KNOX_3_1:
+                return false;
+            default:
+                return true;
+        }
     }
 }

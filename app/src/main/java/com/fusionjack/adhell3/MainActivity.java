@@ -64,7 +64,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         BottomBar bottomBar = findViewById(R.id.bottomBar);
         bottomBar.setTabTitleTextAppearance(R.style.bottomBarTextView);
-        bottomBar.setOnTabSelectListener(this::onTabSelected);
+        bottomBar.setOnTabSelectListener(tabId -> {
+            if (adminInteractor.isAdminActive() && adminInteractor.isKnoxEnabled(this)) {
+                onTabSelected(tabId);
+            }
+        });
     }
 
     @Override
