@@ -22,6 +22,7 @@ import android.widget.Toast;
 import com.fusionjack.adhell3.R;
 import com.fusionjack.adhell3.fragments.HomeTabFragment;
 import com.fusionjack.adhell3.utils.DeviceAdminInteractor;
+import com.samsung.android.knox.license.EnterpriseLicenseManager;
 import com.samsung.android.knox.license.KnoxEnterpriseLicenseManager;
 
 import io.reactivex.Single;
@@ -36,7 +37,6 @@ import io.reactivex.schedulers.Schedulers;
 public class ActivationDialogFragment extends DialogFragment {
     private static final String TAG = ActivationDialogFragment.class.getCanonicalName();
     BroadcastReceiver receiver;
-    IntentFilter filter;
     private DeviceAdminInteractor deviceAdminInteractor;
     private Single<String> knoxKeyObservable;
     private Button turnOnAdminButton;
@@ -79,8 +79,20 @@ public class ActivationDialogFragment extends DialogFragment {
             knoxKeyEditText.setText(knoxKey);
         }
 
+        EditText backwardKeyEditText = view.findViewById(R.id.backwardKeyEditText);
+        boolean useBackwardKey = deviceAdminInteractor.useBackwardCompatibleKey();
+        if (useBackwardKey) {
+            String backwardKey = deviceAdminInteractor.getBackwardKey(sharedPreferences);
+            if (backwardKey != null) {
+                backwardKeyEditText.setText(backwardKey);
+            }
+        } else {
+            backwardKeyEditText.setVisibility(View.GONE);
+        }
+
         activateKnoxButton.setOnClickListener(v -> {
             deviceAdminInteractor.setKnoxKey(sharedPreferences, knoxKeyEditText.getText().toString());
+            deviceAdminInteractor.setBackwardKey(sharedPreferences, backwardKeyEditText.getText().toString());
 
             allowActivateKnox(false);
             activateKnoxButton.setText(R.string.activating_knox_license);
@@ -94,9 +106,10 @@ public class ActivationDialogFragment extends DialogFragment {
                     public void onSuccess(@NonNull String knoxKey) {
                         IntentFilter filter = new IntentFilter();
                         filter.addAction(KnoxEnterpriseLicenseManager.ACTION_LICENSE_STATUS);
+                        filter.addAction(EnterpriseLicenseManager.ACTION_LICENSE_STATUS);
                         getActivity().registerReceiver(receiver, filter);
 
-                        KnoxEnterpriseLicenseManager.getInstance(getContext()).activateLicense(knoxKey);
+                        deviceAdminInteractor.activateKnoxKey(sharedPreferences, getContext());
                     }
 
                     @Override
@@ -115,16 +128,41 @@ public class ActivationDialogFragment extends DialogFragment {
                 String action = intent.getAction();
 
                 if (KnoxEnterpriseLicenseManager.ACTION_LICENSE_STATUS.equals(action)) {
-                    getActivity().unregisterReceiver(receiver);
-
                     int errorCode = intent.getIntExtra(KnoxEnterpriseLicenseManager.EXTRA_LICENSE_ERROR_CODE, -1);
                     if (errorCode == KnoxEnterpriseLicenseManager.ERROR_NONE) {
+                        boolean useBackwardKey = deviceAdminInteractor.useBackwardCompatibleKey();
+                        if (useBackwardKey) {
+                            deviceAdminInteractor.activateBackwardKey(sharedPreferences, getContext());
+                        } else {
+                            getActivity().unregisterReceiver(receiver);
+                            allowActivateKnox(false);
+                            activateKnoxButton.setText(R.string.license_activated);
+                            Log.d(TAG, "License activated");
+                            dismiss();
+                        }
+                    } else {
+                        getActivity().unregisterReceiver(receiver);
+                        String status = intent.getStringExtra(KnoxEnterpriseLicenseManager.EXTRA_LICENSE_STATUS);
+                        Toast.makeText(context, "Status: " +  status + ". Error code: " + errorCode, Toast.LENGTH_LONG).show();
+
+                        // Allow the user to try again
+                        allowActivateKnox(true);
+                        activateKnoxButton.setText(R.string.activate_license);
+                        Log.w(TAG, "License activation failed");
+                    }
+                }
+
+                if (EnterpriseLicenseManager.ACTION_LICENSE_STATUS.equals(action)) {
+                    getActivity().unregisterReceiver(receiver);
+
+                    int errorCode = intent.getIntExtra(EnterpriseLicenseManager.EXTRA_LICENSE_ERROR_CODE, -1);
+                    if (errorCode == EnterpriseLicenseManager.ERROR_NONE) {
                         allowActivateKnox(false);
                         activateKnoxButton.setText(R.string.license_activated);
                         Log.d(TAG, "License activated");
                         dismiss();
-                    } else {
-                        String status = intent.getStringExtra(KnoxEnterpriseLicenseManager.EXTRA_LICENSE_STATUS);
+                    } else  {
+                        String status = intent.getStringExtra(EnterpriseLicenseManager.EXTRA_LICENSE_STATUS);
                         Toast.makeText(context, "Status: " +  status + ". Error code: " + errorCode, Toast.LENGTH_LONG).show();
 
                         // Allow the user to try again
@@ -144,27 +182,33 @@ public class ActivationDialogFragment extends DialogFragment {
         super.onResume();
         disposable = new CompositeDisposable();
 
-        if (deviceAdminInteractor.isActiveAdmin()) {
+        boolean adminActive = deviceAdminInteractor.isAdminActive();
+        if (adminActive) {
             allowTurnOnAdmin(false);
             turnOnAdminButton.setText(R.string.admin_enabled);
+            adminActive = true;
         } else {
             allowTurnOnAdmin(true);
             turnOnAdminButton.setText(R.string.enable_admin);
+            adminActive = false;
         }
 
-        if (deviceAdminInteractor.isKnoxEnabled()) {
+        boolean knoxEnabled = deviceAdminInteractor.isKnoxEnabled(getContext());
+        if (knoxEnabled) {
             activateKnoxButton.setText(R.string.license_activated);
             allowActivateKnox(false);
+            knoxEnabled = true;
         } else {
             activateKnoxButton.setText(R.string.activate_license);
-            if (!deviceAdminInteractor.isActiveAdmin()) {
+            if (!adminActive) {
                 allowActivateKnox(false);
             } else {
                 allowActivateKnox(true);
             }
+            knoxEnabled = false;
         }
 
-        if (deviceAdminInteractor.isActiveAdmin() && deviceAdminInteractor.isKnoxEnabled()) {
+        if (adminActive && knoxEnabled) {
             dismiss();
         }
     }
